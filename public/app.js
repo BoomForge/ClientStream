@@ -959,6 +959,94 @@ async function emailDocument(type, id) {
   }
 }
 
+
+function lineItemContainer(type) {
+  return $("#" + type + "-line-items");
+}
+
+function addLineItem(type, values = {}) {
+  const container = lineItemContainer(type);
+  const row = document.createElement("div");
+  row.className = "line-item";
+
+  const descriptionLabel = document.createElement("label");
+  descriptionLabel.className = "line-description";
+  descriptionLabel.textContent = "Description";
+  const description = document.createElement("input");
+  description.type = "text";
+  description.maxLength = 500;
+  description.required = true;
+  description.value = values.description || "";
+  descriptionLabel.append(description);
+
+  const quantityLabel = document.createElement("label");
+  quantityLabel.textContent = "Qty";
+  const quantity = document.createElement("input");
+  quantity.type = "number";
+  quantity.min = "0.01";
+  quantity.step = "0.01";
+  quantity.required = true;
+  quantity.value = values.quantity ?? "1";
+  quantityLabel.append(quantity);
+
+  const priceLabel = document.createElement("label");
+  priceLabel.textContent = "Unit price";
+  const price = document.createElement("input");
+  price.type = "number";
+  price.min = "0";
+  price.step = "0.01";
+  price.required = true;
+  price.value = values.unitPrice ?? "";
+  priceLabel.append(price);
+
+  const total = document.createElement("div");
+  total.className = "line-total";
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "line-remove";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", "Remove line item");
+
+  const updateTotal = () => {
+    const amount = Number(quantity.value) * Number(price.value);
+    total.textContent = Number.isFinite(amount) ? money(Math.round(amount * 100)) : money(0);
+  };
+
+  quantity.addEventListener("input", updateTotal);
+  price.addEventListener("input", updateTotal);
+  remove.addEventListener("click", () => {
+    if (container.children.length <= 1) {
+      toast("A quote or invoice needs at least one line item.", true);
+      return;
+    }
+    row.remove();
+  });
+
+  row.append(descriptionLabel, quantityLabel, priceLabel, total, remove);
+  container.append(row);
+  updateTotal();
+}
+
+function resetLineItems(type) {
+  lineItemContainer(type).replaceChildren();
+  addLineItem(type);
+}
+
+function collectLineItems(type) {
+  return [...lineItemContainer(type).querySelectorAll(".line-item")].map((row) => {
+    const inputs = row.querySelectorAll("input");
+    return {
+      description: inputs[0].value.trim(),
+      quantity: Number(inputs[1].value),
+      unitPriceCents: Math.round(Number(inputs[2].value) * 100)
+    };
+  });
+}
+
+$("#add-quote-line").addEventListener("click", () => addLineItem("quote"));
+$("#add-invoice-line").addEventListener("click", () => addLineItem("invoice"));
+
 async function loadQuotes() {
   try {
     const data = await api("/api/quotes");
@@ -1025,8 +1113,8 @@ $("#add-quote").addEventListener("click", () => {
     return;
   }
   $("#quote-form").reset();
-  $("#quote-form input[name='quantity']").value = "1";
   $("#quote-form input[name='tax']").value = "0";
+  resetLineItems("quote");
   fillClientSelects();
   $("#quote-dialog").showModal();
 });
@@ -1034,9 +1122,8 @@ $("#add-quote").addEventListener("click", () => {
 $("#quote-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  const unitPrice = Number(form.get("unitPrice"));
   const tax = Number(form.get("tax") || 0);
-  const quantity = Number(form.get("quantity"));
+  const items = collectLineItems("quote");
 
   try {
     await api("/api/quotes", {
@@ -1046,11 +1133,7 @@ $("#quote-form").addEventListener("submit", async (event) => {
         expiresAt: form.get("expiresAt"),
         notes: form.get("notes"),
         taxCents: Math.round(tax * 100),
-        items: [{
-          description: form.get("description"),
-          quantity,
-          unitPriceCents: Math.round(unitPrice * 100)
-        }]
+        items
       })
     });
     $("#quote-dialog").close();
@@ -1133,8 +1216,8 @@ $("#add-invoice").addEventListener("click", () => {
     return;
   }
   $("#invoice-form").reset();
-  $("#invoice-form input[name='quantity']").value = "1";
   $("#invoice-form input[name='tax']").value = "0";
+  resetLineItems("invoice");
   fillClientSelects();
   $("#invoice-dialog").showModal();
 });
@@ -1142,9 +1225,8 @@ $("#add-invoice").addEventListener("click", () => {
 $("#invoice-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  const unitPrice = Number(form.get("unitPrice"));
   const tax = Number(form.get("tax") || 0);
-  const quantity = Number(form.get("quantity"));
+  const items = collectLineItems("invoice");
 
   try {
     await api("/api/invoices", {
@@ -1154,11 +1236,7 @@ $("#invoice-form").addEventListener("submit", async (event) => {
         dueAt: form.get("dueAt"),
         notes: form.get("notes"),
         taxCents: Math.round(tax * 100),
-        items: [{
-          description: form.get("description"),
-          quantity,
-          unitPriceCents: Math.round(unitPrice * 100)
-        }]
+        items
       })
     });
     $("#invoice-dialog").close();
