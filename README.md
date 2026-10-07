@@ -95,6 +95,21 @@ Webhook payloads are signature-verified before they are accepted. Event IDs are 
 - Unlimited invoices
 - 100 Smart Write generations/month
 
+## Deployment automation
+
+A production deployment workflow is included but deliberately stays inert until the repository has these GitHub Actions secrets:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+Once both are present, every successful `main` CI run will:
+
+1. check out the exact validated revision,
+2. apply unapplied D1 migrations to `clientstream-db`,
+3. deploy the Worker and static assets.
+
+Cloudflare documents that Wrangler in CI requires an API token and account ID. The token should be scoped as narrowly as practical rather than using a global API key.
+
 ## Safety
 
 Do not put Square API keys, webhook signing keys, Cloudflare tokens, or other secrets in this repository.
