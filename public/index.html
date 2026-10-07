@@ -46,6 +46,7 @@
         <p class="hint">Use at least 10 characters.</p>
         <button class="primary" type="submit">Create free account</button>
       </form>
+      <p class="auth-legal"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p>
     </div>
   </section>
 
@@ -238,6 +239,17 @@
             <p class="hint">The review link is used automatically by Smart Write when you create a review request.</p>
             <div><button class="primary" type="submit">Save business profile</button></div>
           </form>
+          <div class="account-tools">
+            <div>
+              <h4>Your data</h4>
+              <p>Download a JSON copy of your ClientStream business data, or permanently delete the business and its records.</p>
+            </div>
+            <div class="account-tools-actions">
+              <button class="secondary" type="button" id="export-account">Export my data</button>
+              <button class="danger-button" type="button" id="delete-account">Delete business</button>
+            </div>
+            <p class="hint"><a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a></p>
+          </div>
         </div>
       </section>
     </main>
@@ -357,6 +369,16 @@
       <p id="payment-balance" class="hint"></p>
       <label>Amount received (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
       <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Record payment</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="delete-account-dialog">
+    <form id="delete-account-form" method="dialog" class="dialog-form compact">
+      <div class="dialog-head"><h3>Delete this business</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <p class="dialog-copy">This permanently deletes this business, clients, jobs, quotes, invoices, payments, expenses and reminders. Export your data first if you need a copy.</p>
+      <label>Your password<input name="password" type="password" autocomplete="current-password" required></label>
+      <label>Type DELETE to confirm<input name="confirmation" autocomplete="off" required></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="danger-button" type="submit">Delete permanently</button></div>
     </form>
   </dialog>
 
