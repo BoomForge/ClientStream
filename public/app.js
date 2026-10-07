@@ -2,6 +2,7 @@ const state = {
   me: null,
   clients: [],
   jobs: [],
+  quotes: [],
   invoices: [],
   expenses: [],
   dashboard: null
@@ -128,7 +129,7 @@ $("#signout-button").addEventListener("click", async () => {
 function setView(name) {
   $$(".view").forEach((view) => view.classList.toggle("active", view.dataset.page === name));
   $$(".nav-item[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
-  const titles = { dashboard: "Overview", clients: "Clients", jobs: "Jobs", invoices: "Invoices", expenses: "Expenses" };
+  const titles = { dashboard: "Overview", clients: "Clients", jobs: "Jobs", quotes: "Quotes", invoices: "Invoices", expenses: "Expenses" };
   $("#view-title").textContent = titles[name] || "ClientStream";
 }
 
@@ -158,7 +159,7 @@ function statusBadge(status) {
 }
 
 async function refreshAll() {
-  await Promise.all([loadDashboard(), loadClients(), loadJobs(), loadInvoices(), loadExpenses()]);
+  await Promise.all([loadDashboard(), loadClients(), loadJobs(), loadQuotes(), loadInvoices(), loadExpenses()]);
 }
 
 async function loadDashboard() {
@@ -227,7 +228,7 @@ async function loadClients() {
 }
 
 function fillClientSelects() {
-  const selects = [$("#job-form select[name='clientId']"), $("#invoice-form select[name='clientId']")];
+  const selects = [$("#job-form select[name='clientId']"), $("#quote-form select[name='clientId']"), $("#invoice-form select[name='clientId']")];
   selects.forEach((select, index) => {
     const first = index === 0 ? [["", "No client"]] : [["", "Select a client"]];
     select.replaceChildren(...[...first, ...state.clients.map((client) => [client.id, client.name])].map(([value, label]) => {
@@ -391,6 +392,104 @@ $("#job-form").addEventListener("submit", async (event) => {
   } catch (error) { toast(error.message, true); }
 });
 
+
+async function loadQuotes() {
+  try {
+    const data = await api("/api/quotes");
+    state.quotes = data.quotes || [];
+    renderQuotes();
+  } catch (error) { toast(error.message, true); }
+}
+
+function renderQuotes() {
+  const body = $("#quotes-body");
+  $("#quotes-empty").classList.toggle("hidden", state.quotes.length > 0);
+
+  body.replaceChildren(...state.quotes.map((quote) => {
+    const row = document.createElement("tr");
+    row.append(td(quote.number), td(quote.client_name), td(money(quote.total_cents)));
+
+    const statusCell = document.createElement("td");
+    statusCell.append(statusBadge(quote.status));
+    row.append(statusCell);
+
+    const actions = document.createElement("td");
+    actions.className = "row-actions";
+
+    actions.append(button("Print", () => {
+      window.open("/print.html?type=quote&id=" + encodeURIComponent(quote.id), "_blank", "noopener");
+    }));
+
+    if (quote.status === "draft") {
+      actions.append(button("Mark sent", async () => {
+        try {
+          await api("/api/quotes/" + encodeURIComponent(quote.id), {
+            method: "PATCH",
+            body: JSON.stringify({ status: "sent" })
+          });
+          await loadQuotes();
+          toast("Quote marked sent.");
+        } catch (error) { toast(error.message, true); }
+      }));
+    }
+
+    if (quote.status !== "declined" && quote.status !== "expired") {
+      actions.append(button("To invoice", async () => {
+        try {
+          await api("/api/quotes/" + encodeURIComponent(quote.id) + "/convert", { method: "POST" });
+          await Promise.all([loadQuotes(), loadInvoices(), loadDashboard()]);
+          toast("Quote converted to invoice.");
+          setView("invoices");
+        } catch (error) { toast(error.message, true); }
+      }));
+    }
+
+    row.append(actions);
+    return row;
+  }));
+}
+
+$("#add-quote").addEventListener("click", () => {
+  if (!state.clients.length) {
+    toast("Add a client before creating a quote.", true);
+    setView("clients");
+    return;
+  }
+  $("#quote-form").reset();
+  $("#quote-form input[name='quantity']").value = "1";
+  $("#quote-form input[name='tax']").value = "0";
+  fillClientSelects();
+  $("#quote-dialog").showModal();
+});
+
+$("#quote-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const unitPrice = Number(form.get("unitPrice"));
+  const tax = Number(form.get("tax") || 0);
+  const quantity = Number(form.get("quantity"));
+
+  try {
+    await api("/api/quotes", {
+      method: "POST",
+      body: JSON.stringify({
+        clientId: form.get("clientId"),
+        expiresAt: form.get("expiresAt"),
+        notes: form.get("notes"),
+        taxCents: Math.round(tax * 100),
+        items: [{
+          description: form.get("description"),
+          quantity,
+          unitPriceCents: Math.round(unitPrice * 100)
+        }]
+      })
+    });
+    $("#quote-dialog").close();
+    await loadQuotes();
+    toast("Quote created.");
+  } catch (error) { toast(error.message, true); }
+});
+
 async function loadInvoices() {
   try {
     const data = await api("/api/invoices");
@@ -414,6 +513,10 @@ function renderInvoices() {
 
     const actions = document.createElement("td");
     actions.className = "row-actions";
+
+    actions.append(button("Print", () => {
+      window.open("/print.html?type=invoice&id=" + encodeURIComponent(invoice.id), "_blank", "noopener");
+    }));
 
     if (invoice.status === "draft") {
       actions.append(button("Mark sent", async () => {
