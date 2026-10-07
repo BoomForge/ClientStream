@@ -128,7 +128,7 @@ function publicAppOrigin(request: Request, env: Env): string {
       if (url.protocol === "https:") return url.origin;
     } catch {}
   }
-  return publicAppOrigin(request, env);
+  return new URL(request.url).origin;
 }
 
 async function sendVerificationEmail(
