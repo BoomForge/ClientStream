@@ -56,12 +56,15 @@
   <path d="M50 4a12 12 0 0 1 12 12v6a12 12 0 0 1-12 12h-6l-6 6v-6h-6a12 12 0 0 1-12-12v-6A12 12 0 0 1 32 4h18Z" fill="#0ea5e9" opacity=".84"/>
 </svg><span>ClientStream</span></div>
       <nav>
-        <button class="nav-item active" data-view="dashboard">Overview</button>
+        <button class="nav-item active" data-view="dashboard">Today</button>
         <button class="nav-item" data-view="clients">Clients</button>
         <button class="nav-item" data-view="jobs">Jobs</button>
         <button class="nav-item" data-view="quotes">Quotes</button>
         <button class="nav-item" data-view="invoices">Invoices</button>
         <button class="nav-item" data-view="expenses">Expenses</button>
+        <button class="nav-item" data-view="reports">Reports</button>
+        <button class="nav-item" data-view="smart">Smart Write</button>
+        <button class="nav-item" data-view="settings">Settings</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="plan-chip" id="plan-chip">Free plan</div>
@@ -81,7 +84,7 @@
       <header class="workspace-header">
         <div>
           <p class="eyebrow" id="business-label">CLIENTSTREAM</p>
-          <h2 id="view-title">Overview</h2>
+          <h2 id="view-title">Today</h2>
         </div>
         <div class="account-summary">
           <span id="account-name"></span>
@@ -91,6 +94,13 @@
 
       <section class="view active" data-page="dashboard">
         <div id="metric-grid" class="metric-grid"></div>
+        <div class="panel today-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">ATTENTION</p><h3>What needs doing</h3></div>
+            <button class="primary small" id="add-reminder">Add reminder</button>
+          </div>
+          <div id="today-list" class="today-list"></div>
+        </div>
         <div class="panel billing-panel" id="billing-panel">
           <div class="panel-head">
             <div><p class="eyebrow">PLAN</p><h3 id="billing-plan">Free plan</h3></div>
@@ -164,8 +174,95 @@
           <div class="empty hidden" id="expenses-empty">No expenses yet.</div>
         </div>
       </section>
+
+      <section class="view" data-page="reports">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">EOFY & PERFORMANCE</p><h3>Reports</h3></div>
+            <button class="secondary small" id="export-report">Export CSV</button>
+          </div>
+          <form id="report-form" class="report-filter">
+            <label>From<input name="from" type="date" required></label>
+            <label>To<input name="to" type="date" required></label>
+            <button class="primary small" type="submit">Update report</button>
+          </form>
+          <div id="report-metrics" class="metric-grid report-metrics"></div>
+          <p class="report-note" id="report-note"></p>
+        </div>
+      </section>
+
+      <section class="view" data-page="smart">
+        <div class="smart-grid">
+          <div class="panel">
+            <div class="panel-head"><div><p class="eyebrow">SMART WRITE</p><h3>Turn rough notes into a customer message</h3></div><span id="smart-usage" class="usage-chip"></span></div>
+            <form id="smart-form" class="smart-form">
+              <div class="two-col">
+                <label>Message type
+                  <select name="kind">
+                    <option value="follow_up">Follow-up</option>
+                    <option value="payment_reminder">Payment reminder</option>
+                    <option value="review_request">Google review request</option>
+                    <option value="appointment">Appointment message</option>
+                    <option value="general">General message</option>
+                  </select>
+                </label>
+                <label>Customer name (optional)<input name="clientName" maxlength="160"></label>
+              </div>
+              <label>Rough notes<textarea name="roughNotes" rows="8" maxlength="2000" placeholder="e.g. Job finished Tuesday, invoice 104 is overdue, keep it friendly"></textarea></label>
+              <button class="primary" type="submit">Write message</button>
+            </form>
+          </div>
+          <div class="panel smart-result-panel">
+            <div class="panel-head"><div><p class="eyebrow">RESULT</p><h3>Ready to send</h3></div><button class="secondary small" id="copy-smart" disabled>Copy</button></div>
+            <textarea id="smart-result" class="smart-result" rows="14" readonly placeholder="Your generated message will appear here."></textarea>
+            <p id="smart-mode" class="report-note"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-page="settings">
+        <div class="panel settings-panel">
+          <div class="panel-head"><div><p class="eyebrow">BUSINESS PROFILE</p><h3>Settings</h3></div></div>
+          <form id="settings-form" class="settings-form">
+            <div class="two-col">
+              <label>Business name<input name="name" maxlength="120" required></label>
+              <label>ABN<input name="abn" maxlength="30"></label>
+            </div>
+            <div class="two-col">
+              <label>Business email<input name="businessEmail" type="email"></label>
+              <label>Business phone<input name="businessPhone" maxlength="60"></label>
+            </div>
+            <label>Business address<textarea name="businessAddress" rows="3"></textarea></label>
+            <label>Google review link<input name="googleReviewUrl" type="url" placeholder="https://..."></label>
+            <p class="hint">The review link is used automatically by Smart Write when you create a review request.</p>
+            <div><button class="primary" type="submit">Save business profile</button></div>
+          </form>
+        </div>
+      </section>
     </main>
   </div>
+
+  <dialog id="reminder-dialog">
+    <form id="reminder-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3>Add reminder</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <label>Reminder<input name="title" required maxlength="180"></label>
+      <div class="two-col">
+        <label>Type
+          <select name="kind">
+            <option value="follow_up">Follow-up</option>
+            <option value="payment">Payment</option>
+            <option value="job">Job</option>
+            <option value="review">Review request</option>
+            <option value="general">General</option>
+          </select>
+        </label>
+        <label>Client<select name="clientId"><option value="">No client</option></select></label>
+      </div>
+      <label>When<input name="scheduledFor" type="datetime-local" required></label>
+      <label>Note<textarea name="note" rows="4"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add reminder</button></div>
+    </form>
+  </dialog>
 
   <dialog id="client-dialog">
     <form id="client-form" method="dialog" class="dialog-form">
