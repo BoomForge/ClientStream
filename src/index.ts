@@ -12,8 +12,12 @@ import { squareWebhook } from "./square";
 import { billingStatus, cancelBilling, createCheckout, reconcileBilling } from "./billing";
 import { emailConfigured } from "./email";
 import { sendInvoiceEmail, sendQuoteEmail } from "./document-email";
+import { cancelReminder, completeReminder, createReminder, today } from "./reminders";
+import { exportReportCsv, reportSummary } from "./reports";
+import { getSettings, updateSettings } from "./settings";
+import { smartWrite, smartWriteUsage } from "./smart-write";
 
-const VERSION = "0.5.0-email-recovery";
+const VERSION = "0.6.0-product-parity";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -31,6 +35,7 @@ async function api(request: Request, env: Env): Promise<Response> {
       squareWebhook: env.SQUARE_WEBHOOK_SIGNATURE_KEY ? "configured" : "unconfigured",
       squareBilling: env.SQUARE_ACCESS_TOKEN && env.SQUARE_LOCATION_ID && env.SQUARE_PRO_PLAN_VARIATION_ID ? "configured" : "unconfigured",
       transactionalEmail: emailConfigured(env) ? "configured" : "unconfigured",
+      workersAI: env.AI ? "configured" : "unconfigured",
       timestamp: new Date().toISOString()
     });
   }
@@ -57,6 +62,11 @@ async function api(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "GET" && path === "/api/dashboard") return dashboard(request, env);
+  if (request.method === "GET" && path === "/api/today") return today(request, env);
+
+  if (path === "/api/reminders" && request.method === "POST") return createReminder(request, env);
+  if (/^\/api\/reminders\/[^/]+\/complete$/.test(path) && request.method === "POST") return completeReminder(request, env);
+  if (/^\/api\/reminders\/[^/]+$/.test(path) && request.method === "DELETE") return cancelReminder(request, env);
 
   if (path === "/api/clients") {
     if (request.method === "GET") return listClients(request, env);
@@ -113,6 +123,17 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (/^\/api\/expenses\/[^/]+$/.test(path) && request.method === "DELETE") {
     return deleteExpense(request, env);
   }
+
+  if (request.method === "GET" && path === "/api/reports/summary") return reportSummary(request, env);
+  if (request.method === "GET" && path === "/api/reports/export.csv") return exportReportCsv(request, env);
+
+  if (path === "/api/settings") {
+    if (request.method === "GET") return getSettings(request, env);
+    if (request.method === "PATCH") return updateSettings(request, env);
+  }
+
+  if (request.method === "GET" && path === "/api/smart-write/usage") return smartWriteUsage(request, env);
+  if (request.method === "POST" && path === "/api/smart-write") return smartWrite(request, env);
 
   if (request.method === "GET" && path === "/api/billing/status") return billingStatus(request, env);
   if (request.method === "POST" && path === "/api/billing/checkout") return createCheckout(request, env);
