@@ -4,15 +4,20 @@ ClientStream is being rebuilt as a Cloudflare-native SaaS with no Replit runtime
 
 ## Current phase
 
-This repository contains the first rebuild foundation:
+The rebuild now has:
 
 - Cloudflare Worker API
 - Worker Static Assets frontend
-- Cloudflare D1 migration schema
+- Real Cloudflare D1 binding to `clientstream-db`
+- Core D1 schema for users, businesses, clients, jobs, quotes, invoices, payments and subscriptions
+- Hashed server-side session lookup
+- One-time login-token storage ready for the transactional-email step
+- Business onboarding API
+- Tenant-scoped client list/create/update/archive APIs
+- Free-plan 10-client enforcement on the server
 - Free and Pro entitlement definitions
 - Square webhook verification + idempotent event intake
-- CI type checking
-- No production DNS or existing ClientStream deployment changes
+- CI TypeScript validation + Wrangler deployment dry-run
 
 The existing `clientstream.io` Worker remains untouched while this replacement is built and validated.
 
@@ -25,25 +30,42 @@ The existing `clientstream.io` Worker remains untouched while this replacement i
 - **Source/deployment:** GitHub -> Cloudflare
 - **Object storage:** intentionally deferred; R2 is not required for the foundation
 
-## Local development
+## D1
+
+The Worker is bound to:
+
+- database: `clientstream-db`
+- binding: `DB`
+
+Apply migrations before deploying a database-backed build:
 
 ```bash
 npm install
-npm run dev
-```
-
-The foundation can run without D1. `GET /api/health` will report the database as `unbound`.
-
-To enable D1:
-
-1. Create a Cloudflare D1 database named `clientstream-db`.
-2. Add its database ID to the D1 binding in your Wrangler configuration (see `wrangler.d1.example.jsonc`).
-3. Apply migrations:
-
-```bash
-npm run db:migrate:local
 npm run db:migrate:remote
 ```
+
+## API baseline
+
+Public:
+
+- `GET /api/health`
+- `GET /api/plans`
+- `POST /api/webhooks/square` (requires valid Square signature)
+
+Session-authenticated:
+
+- `GET /api/me`
+- `POST /api/onboarding/business`
+- `GET /api/clients`
+- `POST /api/clients`
+- `PATCH /api/clients/:id`
+- `DELETE /api/clients/:id` (archives rather than hard-deletes)
+
+All client reads and writes are scoped to the authenticated user's business ID at query time.
+
+## Authentication
+
+The database now contains both hashed session storage and hashed one-time login-token storage. The email delivery/consume flow is intentionally not exposed until the transactional email provider is configured, so there is no insecure temporary login bypass in the rebuild.
 
 ## Square webhook
 
@@ -72,8 +94,6 @@ Webhook payloads are signature-verified before they are accepted. Event IDs are 
 - Unlimited clients
 - Unlimited invoices
 - 100 Smart Write generations/month
-
-The plan response lives at `GET /api/plans` and will become the single source of truth for UI entitlement checks.
 
 ## Safety
 
