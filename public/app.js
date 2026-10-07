@@ -673,6 +673,7 @@ async function loadSettings() {
     form.elements.businessPhone.value = state.settings.business_phone || "";
     form.elements.businessAddress.value = state.settings.business_address || "";
     form.elements.googleReviewUrl.value = state.settings.google_review_url || "";
+    form.elements.gstRegistered.checked = Boolean(state.settings.gst_registered);
   } catch (error) {
     toast(error.message, true);
   }
@@ -690,7 +691,8 @@ $("#settings-form").addEventListener("submit", async (event) => {
         businessEmail: form.get("businessEmail"),
         businessPhone: form.get("businessPhone"),
         businessAddress: form.get("businessAddress"),
-        googleReviewUrl: form.get("googleReviewUrl")
+        googleReviewUrl: form.get("googleReviewUrl"),
+        gstRegistered: form.get("gstRegistered") === "on"
       })
     });
     state.settings = data.settings;
@@ -959,6 +961,91 @@ async function emailDocument(type, id) {
   }
 }
 
+function documentTaxDefault() {
+  return state.settings?.gst_registered ? "gst10" : "none";
+}
+
+function documentLineRow(item = {}) {
+  const row = document.createElement("div");
+  row.className = "document-item-row";
+
+  const description = document.createElement("input");
+  description.name = "lineDescription";
+  description.placeholder = "Description";
+  description.maxLength = 500;
+  description.required = true;
+  description.value = item.description || "";
+
+  const quantity = document.createElement("input");
+  quantity.name = "lineQuantity";
+  quantity.type = "number";
+  quantity.min = "0.01";
+  quantity.step = "0.01";
+  quantity.required = true;
+  quantity.value = String(item.quantity ?? 1);
+
+  const price = document.createElement("input");
+  price.name = "linePrice";
+  price.type = "number";
+  price.min = "0";
+  price.step = "0.01";
+  price.required = true;
+  price.placeholder = "0.00";
+  price.value = item.unit_price_cents != null
+    ? (Number(item.unit_price_cents) / 100).toFixed(2)
+    : (item.unitPriceCents != null ? (Number(item.unitPriceCents) / 100).toFixed(2) : "");
+
+  const remove = button("Remove", () => {
+    const container = row.parentElement;
+    if (!container) return;
+    if (container.children.length <= 1) {
+      description.value = "";
+      quantity.value = "1";
+      price.value = "";
+      description.focus();
+      return;
+    }
+    row.remove();
+  }, true);
+
+  const descLabel = document.createElement("label");
+  descLabel.className = "document-description";
+  descLabel.textContent = "Description";
+  descLabel.append(description);
+
+  const qtyLabel = document.createElement("label");
+  qtyLabel.textContent = "Qty";
+  qtyLabel.append(quantity);
+
+  const priceLabel = document.createElement("label");
+  priceLabel.textContent = "Unit price";
+  priceLabel.append(price);
+
+  const action = document.createElement("div");
+  action.className = "document-item-action";
+  action.append(remove);
+
+  row.append(descLabel, qtyLabel, priceLabel, action);
+  return row;
+}
+
+function setDocumentItems(container, items = []) {
+  const safeItems = items.length ? items : [{}];
+  container.replaceChildren(...safeItems.map((item) => documentLineRow(item)));
+}
+
+function collectDocumentItems(container) {
+  return [...container.querySelectorAll(".document-item-row")].map((row) => ({
+    description: row.querySelector("[name='lineDescription']").value,
+    quantity: Number(row.querySelector("[name='lineQuantity']").value),
+    unitPriceCents: Math.round(Number(row.querySelector("[name='linePrice']").value) * 100)
+  }));
+}
+
+function inputDate(value) {
+  return value ? String(value).slice(0, 10) : "";
+}
+
 async function loadQuotes() {
   try {
     const data = await api("/api/quotes");
@@ -982,12 +1069,11 @@ function renderQuotes() {
     const actions = document.createElement("td");
     actions.className = "row-actions";
 
+    if (quote.status === "draft") actions.append(button("Edit", () => openQuoteDialog(quote.id)));
     actions.append(button("Print", () => {
       window.open("/print.html?type=quote&id=" + encodeURIComponent(quote.id), "_blank", "noopener");
     }));
-    if (canEmailDocuments()) {
-      actions.append(button("Email", () => emailDocument("quote", quote.id)));
-    }
+    if (canEmailDocuments()) actions.append(button("Email", () => emailDocument("quote", quote.id)));
 
     if (quote.status === "draft") {
       actions.append(button("Mark sent", async () => {
@@ -1002,7 +1088,7 @@ function renderQuotes() {
       }));
     }
 
-    if (quote.status !== "declined" && quote.status !== "expired") {
+    if (!["declined", "expired"].includes(quote.status)) {
       actions.append(button("To invoice", async () => {
         try {
           await api("/api/quotes/" + encodeURIComponent(quote.id) + "/convert", { method: "POST" });
@@ -1018,44 +1104,64 @@ function renderQuotes() {
   }));
 }
 
-$("#add-quote").addEventListener("click", () => {
+async function openQuoteDialog(id = null) {
   if (!state.clients.length) {
     toast("Add a client before creating a quote.", true);
     setView("clients");
     return;
   }
-  $("#quote-form").reset();
-  $("#quote-form input[name='quantity']").value = "1";
-  $("#quote-form input[name='tax']").value = "0";
+
+  const form = $("#quote-form");
+  form.reset();
   fillClientSelects();
+  form.elements.id.value = "";
+  form.elements.taxMode.value = documentTaxDefault();
+  setDocumentItems($("#quote-items"));
+
+  if (id) {
+    try {
+      const data = await api("/api/quotes/" + encodeURIComponent(id));
+      form.elements.id.value = data.quote.id;
+      form.elements.clientId.value = data.quote.client_id;
+      form.elements.expiresAt.value = inputDate(data.quote.expires_at);
+      form.elements.notes.value = data.quote.notes || "";
+      form.elements.taxMode.value = Number(data.quote.tax_cents) > 0 ? "gst10" : "none";
+      setDocumentItems($("#quote-items"), data.items || []);
+      $("#quote-dialog-title").textContent = "Edit " + data.quote.number;
+    } catch (error) {
+      toast(error.message, true);
+      return;
+    }
+  } else {
+    $("#quote-dialog-title").textContent = "Create quote";
+  }
+
   $("#quote-dialog").showModal();
-});
+}
+
+$("#add-quote").addEventListener("click", () => openQuoteDialog());
+$("#add-quote-item").addEventListener("click", () => $("#quote-items").append(documentLineRow()));
 
 $("#quote-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const unitPrice = Number(form.get("unitPrice"));
-  const tax = Number(form.get("tax") || 0);
-  const quantity = Number(form.get("quantity"));
+  const form = event.currentTarget;
+  const id = form.elements.id.value;
+  const payload = {
+    clientId: form.elements.clientId.value,
+    expiresAt: form.elements.expiresAt.value,
+    notes: form.elements.notes.value,
+    taxMode: form.elements.taxMode.value,
+    items: collectDocumentItems($("#quote-items"))
+  };
 
   try {
-    await api("/api/quotes", {
-      method: "POST",
-      body: JSON.stringify({
-        clientId: form.get("clientId"),
-        expiresAt: form.get("expiresAt"),
-        notes: form.get("notes"),
-        taxCents: Math.round(tax * 100),
-        items: [{
-          description: form.get("description"),
-          quantity,
-          unitPriceCents: Math.round(unitPrice * 100)
-        }]
-      })
+    await api(id ? "/api/quotes/" + encodeURIComponent(id) : "/api/quotes", {
+      method: id ? "PATCH" : "POST",
+      body: JSON.stringify(payload)
     });
     $("#quote-dialog").close();
     await loadQuotes();
-    toast("Quote created.");
+    toast(id ? "Quote updated." : "Quote created.");
   } catch (error) { toast(error.message, true); }
 });
 
@@ -1083,12 +1189,11 @@ function renderInvoices() {
     const actions = document.createElement("td");
     actions.className = "row-actions";
 
+    if (invoice.status === "draft") actions.append(button("Edit", () => openInvoiceDialog(invoice.id)));
     actions.append(button("Print", () => {
       window.open("/print.html?type=invoice&id=" + encodeURIComponent(invoice.id), "_blank", "noopener");
     }));
-    if (canEmailDocuments()) {
-      actions.append(button("Email", () => emailDocument("invoice", invoice.id)));
-    }
+    if (canEmailDocuments()) actions.append(button("Email", () => emailDocument("invoice", invoice.id)));
 
     if (invoice.status === "draft") {
       actions.append(button("Mark sent", async () => {
@@ -1097,7 +1202,7 @@ function renderInvoices() {
             method: "PATCH",
             body: JSON.stringify({ status: "sent" })
           });
-          await Promise.all([loadInvoices(), loadDashboard()]);
+          await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
           toast("Invoice marked sent.");
         } catch (error) { toast(error.message, true); }
       }));
@@ -1107,7 +1212,7 @@ function renderInvoices() {
       actions.append(button("Payment", () => openPaymentDialog(invoice)));
     }
 
-    if (invoice.status !== "paid" && invoice.status !== "void" && invoice.amount_paid_cents === 0) {
+    if (!["paid", "void"].includes(invoice.status) && invoice.amount_paid_cents === 0) {
       actions.append(button("Void", async () => {
         if (!confirm("Void " + invoice.number + "?")) return;
         try {
@@ -1115,7 +1220,7 @@ function renderInvoices() {
             method: "PATCH",
             body: JSON.stringify({ status: "void" })
           });
-          await Promise.all([loadInvoices(), loadDashboard()]);
+          await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
           toast("Invoice voided.");
         } catch (error) { toast(error.message, true); }
       }, true));
@@ -1126,44 +1231,64 @@ function renderInvoices() {
   }));
 }
 
-$("#add-invoice").addEventListener("click", () => {
+async function openInvoiceDialog(id = null) {
   if (!state.clients.length) {
     toast("Add a client before creating an invoice.", true);
     setView("clients");
     return;
   }
-  $("#invoice-form").reset();
-  $("#invoice-form input[name='quantity']").value = "1";
-  $("#invoice-form input[name='tax']").value = "0";
+
+  const form = $("#invoice-form");
+  form.reset();
   fillClientSelects();
+  form.elements.id.value = "";
+  form.elements.taxMode.value = documentTaxDefault();
+  setDocumentItems($("#invoice-items"));
+
+  if (id) {
+    try {
+      const data = await api("/api/invoices/" + encodeURIComponent(id));
+      form.elements.id.value = data.invoice.id;
+      form.elements.clientId.value = data.invoice.client_id;
+      form.elements.dueAt.value = inputDate(data.invoice.due_at);
+      form.elements.notes.value = data.invoice.notes || "";
+      form.elements.taxMode.value = Number(data.invoice.tax_cents) > 0 ? "gst10" : "none";
+      setDocumentItems($("#invoice-items"), data.items || []);
+      $("#invoice-dialog-title").textContent = "Edit " + data.invoice.number;
+    } catch (error) {
+      toast(error.message, true);
+      return;
+    }
+  } else {
+    $("#invoice-dialog-title").textContent = "Create invoice";
+  }
+
   $("#invoice-dialog").showModal();
-});
+}
+
+$("#add-invoice").addEventListener("click", () => openInvoiceDialog());
+$("#add-invoice-item").addEventListener("click", () => $("#invoice-items").append(documentLineRow()));
 
 $("#invoice-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const unitPrice = Number(form.get("unitPrice"));
-  const tax = Number(form.get("tax") || 0);
-  const quantity = Number(form.get("quantity"));
+  const form = event.currentTarget;
+  const id = form.elements.id.value;
+  const payload = {
+    clientId: form.elements.clientId.value,
+    dueAt: form.elements.dueAt.value,
+    notes: form.elements.notes.value,
+    taxMode: form.elements.taxMode.value,
+    items: collectDocumentItems($("#invoice-items"))
+  };
 
   try {
-    await api("/api/invoices", {
-      method: "POST",
-      body: JSON.stringify({
-        clientId: form.get("clientId"),
-        dueAt: form.get("dueAt"),
-        notes: form.get("notes"),
-        taxCents: Math.round(tax * 100),
-        items: [{
-          description: form.get("description"),
-          quantity,
-          unitPriceCents: Math.round(unitPrice * 100)
-        }]
-      })
+    await api(id ? "/api/invoices/" + encodeURIComponent(id) : "/api/invoices", {
+      method: id ? "PATCH" : "POST",
+      body: JSON.stringify(payload)
     });
     $("#invoice-dialog").close();
-    await Promise.all([loadInvoices(), loadDashboard()]);
-    toast("Invoice created.");
+    await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
+    toast(id ? "Invoice updated." : "Invoice created.");
   } catch (error) { toast(error.message, true); }
 });
 
@@ -1188,7 +1313,7 @@ $("#payment-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ amountCents: Math.round(Number(form.get("amount")) * 100) })
     });
     $("#payment-dialog").close();
-    await Promise.all([loadInvoices(), loadDashboard()]);
+    await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
     toast("Payment recorded.");
   } catch (error) { toast(error.message, true); }
 });

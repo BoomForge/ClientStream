@@ -234,6 +234,7 @@
             </div>
             <label>Business address<textarea name="businessAddress" rows="3"></textarea></label>
             <label>Google review link<input name="googleReviewUrl" type="url" placeholder="https://..."></label>
+            <label class="check-row"><input name="gstRegistered" type="checkbox"> <span>Registered for GST — default new quotes and invoices to add 10% GST</span></label>
             <p class="hint">The review link is used automatically by Smart Write when you create a review request.</p>
             <div><button class="primary" type="submit">Save business profile</button></div>
           </form>
@@ -295,33 +296,43 @@
 
   <dialog id="quote-dialog">
     <form id="quote-form" method="dialog" class="dialog-form">
-      <div class="dialog-head"><h3>Create quote</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <div class="dialog-head"><h3 id="quote-dialog-title">Create quote</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <input type="hidden" name="id">
       <label>Client<select name="clientId" required></select></label>
-      <label>Item description<input name="description" required maxlength="500"></label>
-      <div class="three-col">
-        <label>Quantity<input name="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
-        <label>Unit price (AUD)<input name="unitPrice" type="number" min="0" step="0.01" required></label>
-        <label>GST / tax (AUD)<input name="tax" type="number" min="0" step="0.01" value="0"></label>
+      <div class="document-items-head"><strong>Line items</strong><button type="button" class="secondary small" id="add-quote-item">Add line</button></div>
+      <div id="quote-items" class="document-items"></div>
+      <div class="two-col">
+        <label>GST
+          <select name="taxMode">
+            <option value="none">No GST</option>
+            <option value="gst10">Add 10% GST</option>
+          </select>
+        </label>
+        <label>Expires<input name="expiresAt" type="date"></label>
       </div>
-      <label>Expires<input name="expiresAt" type="date"></label>
       <label>Notes<textarea name="notes" rows="3"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Create quote</button></div>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Save quote</button></div>
     </form>
   </dialog>
 
   <dialog id="invoice-dialog">
     <form id="invoice-form" method="dialog" class="dialog-form">
-      <div class="dialog-head"><h3>Create invoice</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <div class="dialog-head"><h3 id="invoice-dialog-title">Create invoice</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <input type="hidden" name="id">
       <label>Client<select name="clientId" required></select></label>
-      <label>Item description<input name="description" required maxlength="500"></label>
-      <div class="three-col">
-        <label>Quantity<input name="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
-        <label>Unit price (AUD)<input name="unitPrice" type="number" min="0" step="0.01" required></label>
-        <label>GST / tax (AUD)<input name="tax" type="number" min="0" step="0.01" value="0"></label>
+      <div class="document-items-head"><strong>Line items</strong><button type="button" class="secondary small" id="add-invoice-item">Add line</button></div>
+      <div id="invoice-items" class="document-items"></div>
+      <div class="two-col">
+        <label>GST
+          <select name="taxMode">
+            <option value="none">No GST</option>
+            <option value="gst10">Add 10% GST</option>
+          </select>
+        </label>
+        <label>Due date<input name="dueAt" type="date"></label>
       </div>
-      <label>Due date<input name="dueAt" type="date"></label>
       <label>Notes<textarea name="notes" rows="3"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Create invoice</button></div>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Save invoice</button></div>
     </form>
   </dialog>
 
