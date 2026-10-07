@@ -6,7 +6,8 @@ import { dashboard } from "./dashboard";
 import { archiveClient, createClient, listClients, updateClient } from "./clients";
 import { cancelJob, createJob, listJobs, updateJob } from "./jobs";
 import { createExpense, deleteExpense, listExpenses } from "./expenses";
-import { createInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
+import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
+import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
 import { squareWebhook } from "./square";
 
 const VERSION = "0.3.0-usable-mvp";
@@ -63,6 +64,18 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (/^\/api\/jobs\/[^/]+$/.test(path)) {
     if (request.method === "PATCH") return updateJob(request, env);
     if (request.method === "DELETE") return cancelJob(request, env);
+  }
+
+  if (path === "/api/quotes") {
+    if (request.method === "GET") return listQuotes(request, env);
+    if (request.method === "POST") return createQuote(request, env);
+  }
+  if (/^\\/api\\/quotes\\/[^/]+\\/convert$/.test(path) && request.method === "POST") {
+    return convertQuote(request, env);
+  }
+  if (/^\\/api\\/quotes\\/[^/]+$/.test(path)) {
+    if (request.method === "GET") return getQuote(request, env);
+    if (request.method === "PATCH") return updateQuote(request, env);
   }
 
   if (path === "/api/invoices") {
