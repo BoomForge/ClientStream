@@ -82,6 +82,19 @@
 
       <section class="view active" data-page="dashboard">
         <div id="metric-grid" class="metric-grid"></div>
+        <div class="panel billing-panel" id="billing-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">PLAN</p><h3 id="billing-plan">Free plan</h3></div>
+            <div class="billing-actions">
+              <button class="secondary small hidden" id="reconcile-billing">Check payment</button>
+              <button class="secondary small hidden" id="cancel-billing">Cancel Pro</button>
+              <button class="primary small" id="upgrade-button">Upgrade to Pro</button>
+            </div>
+          </div>
+          <div class="billing-content">
+            <p id="billing-copy">Up to 10 active clients and 10 invoices. Upgrade when ClientStream earns its place in your business.</p>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-head"><div><p class="eyebrow">RECENT</p><h3>Invoices</h3></div></div>
           <div id="recent-invoices"></div>

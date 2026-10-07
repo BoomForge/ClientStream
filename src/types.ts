@@ -6,6 +6,10 @@ export interface Env {
   APP_ENV?: string;
   SQUARE_WEBHOOK_SIGNATURE_KEY?: string;
   SQUARE_WEBHOOK_URL?: string;
+  SQUARE_ACCESS_TOKEN?: string;
+  SQUARE_LOCATION_ID?: string;
+  SQUARE_PRO_PLAN_VARIATION_ID?: string;
+  SQUARE_ENVIRONMENT?: "sandbox" | "production";
 }
 
 export interface SessionUser {
