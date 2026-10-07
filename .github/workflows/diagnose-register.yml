@@ -26,7 +26,17 @@ jobs:
           set +e
           timeout 20s npx wrangler tail clientstream --format=pretty > tail.log 2>&1 &
           tail_pid=$!
-          sleep 4
+          for i in {1..20}; do
+            if grep -q "Connected to clientstream" tail.log 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          if ! grep -q "Connected to clientstream" tail.log 2>/dev/null; then
+            echo "Tail did not connect"
+            cat tail.log
+            exit 1
+          fi
           npm run smoke:production
           smoke_status=$?
           sleep 5
