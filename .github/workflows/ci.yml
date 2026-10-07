@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,3 +22,5 @@ jobs:
         run: npm install
       - name: Type check
         run: npm run check
+      - name: Validate Cloudflare bundle
+        run: npx wrangler deploy --dry-run
