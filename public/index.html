@@ -4,67 +4,198 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="ClientStream Cloudflare rebuild preview">
-  <title>ClientStream — Rebuild Preview</title>
+  <meta name="description" content="ClientStream — simple client, job and invoice management for small business.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'">
+  <title>ClientStream</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <a class="brand" href="/" aria-label="ClientStream home">
-        <span class="brand-mark">C</span>
-        <span>ClientStream</span>
-      </a>
-      <span class="badge">Cloudflare rebuild</span>
-    </header>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <main>
-      <section class="hero">
-        <p class="eyebrow">CLIENTSTREAM 2.0 FOUNDATION</p>
-        <h1>Your clients. Your work. One clear stream.</h1>
-        <p class="lede">
-          Rebuilding ClientStream as a lightweight, automated business workspace
-          with no Replit runtime dependency.
-        </p>
-      </section>
+  <section id="auth-view" class="auth-shell">
+    <div class="auth-brand">
+      <span class="brand-mark">C</span>
+      <span>ClientStream</span>
+    </div>
+    <div class="auth-copy">
+      <p class="eyebrow">SMALL BUSINESS, LESS ADMIN</p>
+      <h1>Keep your work moving.</h1>
+      <p>Clients, jobs, invoices and expenses in one focused workspace.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="tab active" data-auth-tab="login">Sign in</button>
+        <button class="tab" data-auth-tab="register">Create account</button>
+      </div>
 
-      <section class="grid" aria-label="Foundation status">
-        <article class="card">
-          <span class="card-label">API</span>
-          <strong id="api-state">Checking…</strong>
-          <p id="api-detail">Connecting to the Worker health endpoint.</p>
-        </article>
+      <form id="login-form" class="stack">
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Sign in</button>
+      </form>
 
-        <article class="card">
-          <span class="card-label">Database</span>
-          <strong id="db-state">Checking…</strong>
-          <p>D1 will hold accounts, clients, jobs, quotes, invoices and billing state.</p>
-        </article>
+      <form id="register-form" class="stack hidden">
+        <label>Your name<input name="displayName" autocomplete="name" required maxlength="80"></label>
+        <label>Business name<input name="businessName" autocomplete="organization" required maxlength="120"></label>
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+        <p class="hint">Use at least 10 characters.</p>
+        <button class="primary" type="submit">Create free account</button>
+      </form>
+    </div>
+  </section>
 
-        <article class="card">
-          <span class="card-label">Payments</span>
-          <strong id="square-state">Checking…</strong>
-          <p>Square subscription webhook verification is built into the foundation.</p>
-        </article>
-      </section>
+  <div id="app-view" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><span class="brand-mark">C</span><span>ClientStream</span></div>
+      <nav>
+        <button class="nav-item active" data-view="dashboard">Overview</button>
+        <button class="nav-item" data-view="clients">Clients</button>
+        <button class="nav-item" data-view="jobs">Jobs</button>
+        <button class="nav-item" data-view="invoices">Invoices</button>
+        <button class="nav-item" data-view="expenses">Expenses</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="plan-chip" id="plan-chip">Free plan</div>
+        <button class="nav-item" id="signout-button">Sign out</button>
+      </div>
+    </aside>
 
-      <section class="plans">
+    <main class="workspace">
+      <header class="workspace-header">
         <div>
-          <p class="eyebrow">PLANS</p>
-          <h2>Start free. Upgrade when the business needs it.</h2>
+          <p class="eyebrow" id="business-label">CLIENTSTREAM</p>
+          <h2 id="view-title">Overview</h2>
         </div>
-        <div id="plan-list" class="plan-list" aria-live="polite"></div>
+        <div class="account-summary">
+          <span id="account-name"></span>
+          <span id="account-email"></span>
+        </div>
+      </header>
+
+      <section class="view active" data-page="dashboard">
+        <div id="metric-grid" class="metric-grid"></div>
+        <div class="panel">
+          <div class="panel-head"><div><p class="eyebrow">RECENT</p><h3>Invoices</h3></div></div>
+          <div id="recent-invoices"></div>
+        </div>
       </section>
 
-      <section class="notice">
-        <strong>Development build</strong>
-        <p>
-          This repository is being developed separately from the current
-          clientstream.io deployment. Production DNS has not been changed.
-        </p>
+      <section class="view" data-page="clients">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">CUSTOMERS</p><h3>Clients</h3></div>
+            <button class="primary small" id="add-client">Add client</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th></th></tr></thead><tbody id="clients-body"></tbody></table></div>
+          <div class="empty hidden" id="clients-empty">No clients yet. Add your first client to get started.</div>
+        </div>
+      </section>
+
+      <section class="view" data-page="jobs">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">WORK</p><h3>Jobs</h3></div>
+            <button class="primary small" id="add-job">Add job</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Scheduled</th><th>Status</th><th></th></tr></thead><tbody id="jobs-body"></tbody></table></div>
+          <div class="empty hidden" id="jobs-empty">No jobs yet.</div>
+        </div>
+      </section>
+
+      <section class="view" data-page="invoices">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">MONEY IN</p><h3>Invoices</h3></div>
+            <button class="primary small" id="add-invoice">Create invoice</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Outstanding</th><th>Status</th><th></th></tr></thead><tbody id="invoices-body"></tbody></table></div>
+          <div class="empty hidden" id="invoices-empty">No invoices yet.</div>
+        </div>
+      </section>
+
+      <section class="view" data-page="expenses">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">MONEY OUT</p><h3>Expenses</h3></div>
+            <button class="primary small" id="add-expense">Add expense</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Description</th><th>Category</th><th>Date</th><th>Amount</th><th></th></tr></thead><tbody id="expenses-body"></tbody></table></div>
+          <div class="empty hidden" id="expenses-empty">No expenses yet.</div>
+        </div>
       </section>
     </main>
   </div>
+
+  <dialog id="client-dialog">
+    <form id="client-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3 id="client-dialog-title">Add client</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <input type="hidden" name="id">
+      <div class="two-col">
+        <label>Name<input name="name" required maxlength="160"></label>
+        <label>Company<input name="company" maxlength="160"></label>
+      </div>
+      <div class="two-col">
+        <label>Email<input name="email" type="email"></label>
+        <label>Phone<input name="phone"></label>
+      </div>
+      <label>Address<textarea name="address" rows="2"></textarea></label>
+      <label>Notes<textarea name="notes" rows="4"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Save client</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="job-dialog">
+    <form id="job-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3>Add job</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <label>Title<input name="title" required maxlength="180"></label>
+      <label>Client<select name="clientId"><option value="">No client</option></select></label>
+      <label>Scheduled for<input name="scheduledFor" type="datetime-local"></label>
+      <label>Description<textarea name="description" rows="5"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add job</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="invoice-dialog">
+    <form id="invoice-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3>Create invoice</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <label>Client<select name="clientId" required></select></label>
+      <label>Item description<input name="description" required maxlength="500"></label>
+      <div class="three-col">
+        <label>Quantity<input name="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+        <label>Unit price (AUD)<input name="unitPrice" type="number" min="0" step="0.01" required></label>
+        <label>GST / tax (AUD)<input name="tax" type="number" min="0" step="0.01" value="0"></label>
+      </div>
+      <label>Due date<input name="dueAt" type="date"></label>
+      <label>Notes<textarea name="notes" rows="3"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Create invoice</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="expense-dialog">
+    <form id="expense-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3>Add expense</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <label>Description<input name="description" required maxlength="240"></label>
+      <div class="two-col">
+        <label>Category<input name="category" maxlength="100"></label>
+        <label>Amount (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
+      </div>
+      <label>Date<input name="incurredAt" type="date" required></label>
+      <label>Notes<textarea name="notes" rows="3"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add expense</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="payment-dialog">
+    <form id="payment-form" method="dialog" class="dialog-form compact">
+      <div class="dialog-head"><h3>Record payment</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <input type="hidden" name="invoiceId">
+      <p id="payment-balance" class="hint"></p>
+      <label>Amount received (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Record payment</button></div>
+    </form>
+  </dialog>
+
   <script type="module" src="/app.js"></script>
 </body>
 </html>

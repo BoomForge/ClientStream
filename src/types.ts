@@ -1,0 +1,51 @@
+export type PlanId = "free" | "pro";
+
+export interface Env {
+  ASSETS: Fetcher;
+  DB: D1Database;
+  APP_ENV?: string;
+  SQUARE_WEBHOOK_SIGNATURE_KEY?: string;
+  SQUARE_WEBHOOK_URL?: string;
+}
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+}
+
+export interface BusinessContext {
+  id: string;
+  name: string;
+  slug: string;
+  plan: PlanId;
+  role: "owner" | "admin" | "member";
+}
+
+export interface AuthContext {
+  user: SessionUser;
+  business: BusinessContext | null;
+}
+
+export const PLAN_CATALOG = {
+  free: {
+    id: "free",
+    name: "Free",
+    monthlyAudCents: 0,
+    limits: {
+      clients: 10,
+      invoices: 10,
+      smartWriteGenerationsPerMonth: 5
+    }
+  },
+  pro: {
+    id: "pro",
+    name: "Pro",
+    monthlyAudCents: 999,
+    limits: {
+      clients: null,
+      invoices: null,
+      smartWriteGenerationsPerMonth: 100
+    }
+  }
+} as const;
