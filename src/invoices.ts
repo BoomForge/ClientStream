@@ -24,6 +24,12 @@ export async function listInvoices(request: Request, env: Env): Promise<Response
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
 
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+  await env.DB.prepare(
+    "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE business_id = ? AND status = 'sent' AND due_at IS NOT NULL AND due_at < ?"
+  ).bind(now, business.id, today).run();
+
   const result = await env.DB.prepare(
     "SELECT i.id, i.client_id, c.name AS client_name, i.number, i.status, i.currency, i.subtotal_cents, i.tax_cents, i.total_cents, i.amount_paid_cents, i.issued_at, i.due_at, i.paid_at, i.notes, i.created_at FROM invoices i JOIN clients c ON c.id = i.client_id WHERE i.business_id = ? ORDER BY i.created_at DESC LIMIT 500"
   ).bind(business.id).all();
@@ -42,7 +48,7 @@ export async function getInvoice(request: Request, env: Env): Promise<Response> 
   if (!id) return json({ error: "Invalid invoice id." }, { status: 400 });
 
   const invoice = await env.DB.prepare(
-    "SELECT i.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name FROM invoices i JOIN clients c ON c.id = i.client_id JOIN businesses b ON b.id = i.business_id WHERE i.id = ? AND i.business_id = ? LIMIT 1"
+    "SELECT i.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name, b.business_email, b.business_phone, b.business_address, b.abn FROM invoices i JOIN clients c ON c.id = i.client_id JOIN businesses b ON b.id = i.business_id WHERE i.id = ? AND i.business_id = ? LIMIT 1"
   ).bind(id, business.id).first();
 
   if (!invoice) return json({ error: "Invoice not found." }, { status: 404 });
