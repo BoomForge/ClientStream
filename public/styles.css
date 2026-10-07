@@ -125,7 +125,7 @@ dialog::backdrop { background: rgba(1,7,5,.72); backdrop-filter: blur(3px); }
   .app { display: block; }
   .sidebar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; top: auto; height: auto; border-right: 0; border-top: 1px solid var(--line); padding: 7px; flex-direction: row; background: rgba(8,19,15,.96); }
   .sidebar-brand, .sidebar-bottom { display: none; }
-  .sidebar nav { width: 100%; display: grid; grid-template-columns: repeat(5,1fr); }
+  .sidebar nav { width: 100%; display: grid; grid-template-columns: repeat(6,1fr); }
   .nav-item { font-size: .67rem !important; text-align: center; padding: 10px 3px; }
   .nav-item.active { box-shadow: inset 0 -2px var(--accent); }
   .workspace { padding: 22px 14px 90px; }
