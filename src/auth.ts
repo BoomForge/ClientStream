@@ -58,6 +58,22 @@ async function derivePassword(
   return new Uint8Array(bits);
 }
 
+export async function verifyUserPassword(env: Env, userId: string, password: string): Promise<boolean> {
+  if (!password || password.length > 128) return false;
+
+  const row = await env.DB.prepare(
+    "SELECT password_hash, salt, iterations FROM password_credentials WHERE user_id = ? LIMIT 1"
+  ).bind(userId).first<{ password_hash: string; salt: string; iterations: number }>();
+
+  if (!row) return false;
+  const salt = fromBase64(row.salt);
+  const expected = fromBase64(row.password_hash);
+  if (!salt || !expected) return false;
+
+  const actual = await derivePassword(password, salt, row.iterations);
+  return constantTimeEqual(actual, expected);
+}
+
 async function createSession(env: Env, userId: string): Promise<{ token: string; expiresAt: string }> {
   const token = randomToken(32);
   const tokenHash = await sha256Hex(token);
@@ -102,6 +118,17 @@ async function issueToken(
   ]);
 
   return token;
+}
+
+function publicAppOrigin(request: Request, env: Env): string {
+  const configured = env.PUBLIC_APP_URL?.trim();
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === "https:") return url.origin;
+    } catch {}
+  }
+  return publicAppOrigin(request, env);
 }
 
 async function sendVerificationEmail(
@@ -247,7 +274,7 @@ export async function register(request: Request, env: Env): Promise<Response> {
   let verificationSent = false;
   if (emailConfigured(env)) {
     try {
-      verificationSent = await sendVerificationEmail(env, userId, email, new URL(request.url).origin);
+      verificationSent = await sendVerificationEmail(env, userId, email, publicAppOrigin(request, env));
     } catch (error) {
       console.error("ClientStream verification email failed", error);
     }
@@ -348,7 +375,7 @@ export async function requestPasswordReset(request: Request, env: Env): Promise<
     if (user) {
       const token = await issueToken(env, user.id, "password_reset", RESET_TOKEN_SECONDS);
       if (token) {
-        const url = new URL(request.url).origin + "/?reset=" + encodeURIComponent(token);
+        const url = publicAppOrigin(request, env) + "/?reset=" + encodeURIComponent(token);
         try {
           await sendEmail(env, {
             to: email,
@@ -424,7 +451,7 @@ export async function sendVerification(request: Request, env: Env): Promise<Resp
   if (context instanceof Response) return context;
   if (context.user.emailVerified) return json({ verified: true, sent: false });
 
-  const sent = await sendVerificationEmail(env, context.user.id, context.user.email, new URL(request.url).origin);
+  const sent = await sendVerificationEmail(env, context.user.id, context.user.email, publicAppOrigin(request, env));
   return json({ verified: false, sent });
 }
 
