@@ -137,3 +137,32 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   .two-col, .three-col { grid-template-columns: 1fr; }
   .panel-head { padding: 15px; }
 }
+
+.text-button {
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--navy);
+  font-weight: 750;
+  text-align: left;
+  box-shadow: none;
+}
+.text-button:hover { text-decoration: underline; }
+.verification-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid #bae6fd;
+  border-radius: 14px;
+  background: var(--sky-light);
+  color: var(--navy-dark);
+}
+.verification-banner > div { display: grid; gap: 3px; }
+.verification-banner span { color: #40506a; font-size: .84rem; }
+.dialog-copy { margin: 0; color: var(--muted); line-height: 1.6; }
+@media (max-width: 640px) {
+  .verification-banner { align-items: flex-start; flex-direction: column; }
+}
