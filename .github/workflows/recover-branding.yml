@@ -1,0 +1,66 @@
+name: Recover original ClientStream branding
+
+on:
+  push:
+    branches:
+      - branding/recover-original
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    if: "!contains(github.event.head_commit.message, '[branding recovered]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Recover public branding assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf branding-reference
+          mkdir -p branding-reference/assets
+
+          curl -fsSL https://clientstream.io/ -o branding-reference/index.html
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, urllib.parse, subprocess
+
+          html = Path("branding-reference/index.html").read_text(errors="ignore")
+          urls = set()
+
+          for attr in ("href", "src"):
+              for value in re.findall(rf'{attr}=["\']([^"\']+)["\']', html):
+                  if value.startswith(("data:", "mailto:", "tel:", "#", "javascript:")):
+                      continue
+                  absolute = urllib.parse.urljoin("https://clientstream.io/", value)
+                  parsed = urllib.parse.urlparse(absolute)
+                  if parsed.netloc != "clientstream.io":
+                      continue
+                  path = parsed.path.lower()
+                  if path.endswith((".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico", ".woff", ".woff2", ".ttf")):
+                      urls.add(absolute)
+
+          manifest = []
+          for url in sorted(urls):
+              parsed = urllib.parse.urlparse(url)
+              name = parsed.path.strip("/").replace("/", "__") or "asset"
+              if not name:
+                  continue
+              target = Path("branding-reference/assets") / name
+              try:
+                  subprocess.run(["curl", "-fsSL", url, "-o", str(target)], check=True)
+                  manifest.append(f"{url}\t{target.as_posix()}")
+              except subprocess.CalledProcessError:
+                  manifest.append(f"{url}\tFAILED")
+
+          Path("branding-reference/manifest.txt").write_text("\n".join(manifest) + "\n")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add branding-reference
+          git commit -m "Recover original ClientStream branding assets [branding recovered]"
+          git push origin HEAD:branding/recover-original
