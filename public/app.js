@@ -5,7 +5,8 @@ const state = {
   quotes: [],
   invoices: [],
   expenses: [],
-  dashboard: null
+  dashboard: null,
+  billing: null
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -61,6 +62,7 @@ async function showApp() {
   $("#account-email").textContent = state.me.user.email;
   $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
   await refreshAll();
+  await handleBillingReturn();
 }
 
 async function boot() {
@@ -158,9 +160,121 @@ function statusBadge(status) {
   return span;
 }
 
-async function refreshAll() {
-  await Promise.all([loadDashboard(), loadClients(), loadJobs(), loadQuotes(), loadInvoices(), loadExpenses()]);
+async function refreshIdentity() {
+  state.me = await api("/api/me");
+  $("#business-label").textContent = (state.me.business?.name || "CLIENTSTREAM").toUpperCase();
+  $("#account-name").textContent = state.me.user.displayName || "Account";
+  $("#account-email").textContent = state.me.user.email;
+  $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
 }
+
+async function refreshAll() {
+  await Promise.all([loadDashboard(), loadBilling(), loadClients(), loadJobs(), loadQuotes(), loadInvoices(), loadExpenses()]);
+}
+
+async function loadBilling() {
+  try {
+    state.billing = await api("/api/billing/status");
+    renderBilling();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function renderBilling() {
+  const billing = state.billing || {};
+  const isPro = billing.businessPlan === "pro";
+  const configured = Boolean(billing.configured);
+  const subscription = billing.subscription;
+
+  $("#billing-plan").textContent = isPro ? "Pro plan" : "Free plan";
+  $("#upgrade-button").classList.toggle("hidden", isPro);
+  $("#cancel-billing").classList.toggle("hidden", !isPro || subscription?.cancelAtPeriodEnd);
+  $("#reconcile-billing").classList.add("hidden");
+
+  if (!configured && !isPro) {
+    $("#upgrade-button").disabled = true;
+    $("#upgrade-button").textContent = "Square setup pending";
+    $("#billing-copy").textContent = "Your Free plan is active. Pro checkout will appear here as soon as Square is connected.";
+    return;
+  }
+
+  $("#upgrade-button").disabled = false;
+  $("#upgrade-button").textContent = "Upgrade to Pro";
+
+  if (isPro) {
+    const end = subscription?.currentPeriodEnd ? " Current paid period: " + dateText(subscription.currentPeriodEnd) + "." : "";
+    const cancelling = subscription?.cancelAtPeriodEnd ? " Cancellation is scheduled." : "";
+    $("#billing-copy").textContent = "Unlimited clients and invoices, plus Pro features." + end + cancelling;
+  } else {
+    $("#billing-copy").textContent = "Up to 10 active clients and 10 invoices. Pro is A$9.99/month with unlimited clients and invoices.";
+  }
+}
+
+async function handleBillingReturn() {
+  const url = new URL(location.href);
+  if (url.searchParams.get("billing") !== "success") return;
+
+  url.searchParams.delete("billing");
+  history.replaceState({}, "", url.pathname + url.search + url.hash);
+
+  $("#reconcile-billing").classList.remove("hidden");
+  toast("Square checkout completed. Checking your Pro subscription…");
+
+  try {
+    const result = await api("/api/billing/reconcile", { method: "POST" });
+    if (result.active) {
+      await refreshIdentity();
+      await loadBilling();
+      $("#reconcile-billing").classList.add("hidden");
+      toast("ClientStream Pro is active.");
+    } else {
+      toast("Square is still finalising the subscription. Use Check payment in a moment.");
+    }
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+$("#upgrade-button").addEventListener("click", async () => {
+  try {
+    $("#upgrade-button").disabled = true;
+    $("#upgrade-button").textContent = "Opening Square…";
+    const result = await api("/api/billing/checkout", { method: "POST" });
+    location.href = result.checkoutUrl;
+  } catch (error) {
+    $("#upgrade-button").disabled = false;
+    $("#upgrade-button").textContent = "Upgrade to Pro";
+    toast(error.message, true);
+  }
+});
+
+$("#reconcile-billing").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/billing/reconcile", { method: "POST" });
+    if (!result.active) {
+      toast("No active Pro subscription is visible in Square yet.");
+      return;
+    }
+    await refreshIdentity();
+    await loadBilling();
+    $("#reconcile-billing").classList.add("hidden");
+    toast("ClientStream Pro is active.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$("#cancel-billing").addEventListener("click", async () => {
+  if (!confirm("Cancel ClientStream Pro at the end of the current paid period?")) return;
+  try {
+    await api("/api/billing/cancel", { method: "POST" });
+    await loadBilling();
+    toast("Pro cancellation scheduled.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
 
 async function loadDashboard() {
   try {
