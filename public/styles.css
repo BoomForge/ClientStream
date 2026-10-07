@@ -235,3 +235,43 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   .report-filter label { min-width: 0; }
   .report-metrics { grid-template-columns: 1fr 1fr; }
 }
+
+.line-items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+.line-items { display: grid; gap: 10px; }
+.line-item {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 90px 130px auto auto;
+  gap: 8px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+.line-item .line-total {
+  min-width: 95px;
+  padding: 11px 4px;
+  color: var(--navy);
+  font-weight: 800;
+  text-align: right;
+}
+.line-remove {
+  border: 0;
+  background: #fff1f1;
+  color: var(--danger);
+  width: 38px;
+  height: 40px;
+  border-radius: 9px;
+  font-weight: 900;
+}
+@media (max-width: 700px) {
+  .line-item { grid-template-columns: 1fr 1fr; }
+  .line-item .line-description { grid-column: 1 / -1; }
+  .line-item .line-total { text-align: left; }
+}
