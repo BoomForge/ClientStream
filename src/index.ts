@@ -16,14 +16,28 @@ import { cancelReminder, completeReminder, createReminder, today } from "./remin
 import { exportReportCsv, reportSummary } from "./reports";
 import { getSettings, updateSettings } from "./settings";
 import { smartWrite, smartWriteUsage } from "./smart-write";
+import { deleteAccount, exportAccountData } from "./account";
+import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } from "./security";
+import { runMaintenance } from "./maintenance";
 
-const VERSION = "0.6.0-product-parity";
+const VERSION = "0.8.0-launch-hardening";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+
+  if (path.startsWith("/api/auth/") && request.method !== "GET") {
+    const limited = await enforceAuthRateLimit(request, env);
+    if (limited) return limited;
+  } else if (
+    ["POST", "PATCH", "DELETE"].includes(request.method) &&
+    path !== "/api/webhooks/square"
+  ) {
+    const limited = await enforceMutationRateLimit(request, env);
+    if (limited) return limited;
+  }
 
   if (request.method === "GET" && path === "/api/health") {
     return json({
@@ -41,6 +55,9 @@ async function api(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "GET" && path === "/api/plans") return json({ plans: PLAN_CATALOG });
+
+  if (request.method === "GET" && path === "/api/account/export") return exportAccountData(request, env);
+  if (request.method === "POST" && path === "/api/account/delete") return deleteAccount(request, env);
 
   if (request.method === "POST" && path === "/api/auth/register") return register(request, env);
   if (request.method === "POST" && path === "/api/auth/login") return login(request, env);
@@ -148,13 +165,30 @@ async function api(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-
-    try {
-      return await api(request, env);
-    } catch (error) {
-      console.error("ClientStream API error", error);
-      return json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    if (!url.pathname.startsWith("/api/")) {
+      return secureAssetResponse(await env.ASSETS.fetch(request));
     }
+
+    const requestId = crypto.randomUUID();
+    try {
+      const response = await api(request, env);
+      response.headers.set("x-request-id", requestId);
+      return response;
+    } catch (error) {
+      console.error("ClientStream API error", {
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        error
+      });
+      return json(
+        { error: "Something went wrong. Please try again.", requestId },
+        { status: 500, headers: { "x-request-id": requestId } }
+      );
+    }
+  },
+
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runMaintenance(env));
   }
 } satisfies ExportedHandler<Env>;
