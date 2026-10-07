@@ -22,5 +22,11 @@ jobs:
         run: npm install
       - name: Type check
         run: npm run check
+      - name: Check browser and smoke-test JavaScript syntax
+        run: npm run check:js
+      - name: Validate D1 migrations on a fresh local database
+        run: |
+          rm -rf .wrangler/state
+          npm run db:migrate:local
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run
