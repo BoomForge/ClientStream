@@ -1,6 +1,6 @@
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
-import { getAuthContext, login, logout, register } from "./auth";
+import { getAuthContext, login, logout, register, requestPasswordReset, resetPassword, sendVerification, verifyEmail } from "./auth";
 import { json } from "./http";
 import { dashboard } from "./dashboard";
 import { archiveClient, createClient, listClients, updateClient } from "./clients";
@@ -10,8 +10,10 @@ import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice }
 import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
 import { squareWebhook } from "./square";
 import { billingStatus, cancelBilling, createCheckout, reconcileBilling } from "./billing";
+import { emailConfigured } from "./email";
+import { sendInvoiceEmail, sendQuoteEmail } from "./document-email";
 
-const VERSION = "0.4.0-square-billing";
+const VERSION = "0.5.0-email-recovery";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -28,6 +30,7 @@ async function api(request: Request, env: Env): Promise<Response> {
       database: "bound",
       squareWebhook: env.SQUARE_WEBHOOK_SIGNATURE_KEY ? "configured" : "unconfigured",
       squareBilling: env.SQUARE_ACCESS_TOKEN && env.SQUARE_LOCATION_ID && env.SQUARE_PRO_PLAN_VARIATION_ID ? "configured" : "unconfigured",
+      transactionalEmail: emailConfigured(env) ? "configured" : "unconfigured",
       timestamp: new Date().toISOString()
     });
   }
@@ -37,6 +40,10 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (request.method === "POST" && path === "/api/auth/register") return register(request, env);
   if (request.method === "POST" && path === "/api/auth/login") return login(request, env);
   if (request.method === "POST" && path === "/api/auth/logout") return logout(request, env);
+  if (request.method === "POST" && path === "/api/auth/request-reset") return requestPasswordReset(request, env);
+  if (request.method === "POST" && path === "/api/auth/reset-password") return resetPassword(request, env);
+  if (request.method === "POST" && path === "/api/auth/send-verification") return sendVerification(request, env);
+  if (request.method === "POST" && path === "/api/auth/verify-email") return verifyEmail(request, env);
 
   if (request.method === "GET" && path === "/api/me") {
     const context = await getAuthContext(request, env);
@@ -44,7 +51,8 @@ async function api(request: Request, env: Env): Promise<Response> {
     return json({
       user: context.user,
       business: context.business,
-      plan: context.business ? PLAN_CATALOG[context.business.plan] : null
+      plan: context.business ? PLAN_CATALOG[context.business.plan] : null,
+      emailConfigured: emailConfigured(env)
     });
   }
 
@@ -72,6 +80,9 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (request.method === "GET") return listQuotes(request, env);
     if (request.method === "POST") return createQuote(request, env);
   }
+  if (/^\/api\/quotes\/[^/]+\/send-email$/.test(path) && request.method === "POST") {
+    return sendQuoteEmail(request, env);
+  }
   if (/^\/api\/quotes\/[^/]+\/convert$/.test(path) && request.method === "POST") {
     return convertQuote(request, env);
   }
@@ -87,6 +98,9 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (/^\/api\/invoices\/[^/]+$/.test(path)) {
     if (request.method === "GET") return getInvoice(request, env);
     if (request.method === "PATCH") return updateInvoice(request, env);
+  }
+  if (/^\/api\/invoices\/[^/]+\/send-email$/.test(path) && request.method === "POST") {
+    return sendInvoiceEmail(request, env);
   }
   if (/^\/api\/invoices\/[^/]+\/payments$/.test(path) && request.method === "POST") {
     return recordPayment(request, env);
