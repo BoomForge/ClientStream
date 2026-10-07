@@ -46,7 +46,7 @@ export async function getQuote(request: Request, env: Env): Promise<Response> {
   if (!id) return json({ error: "Invalid quote id." }, { status: 400 });
 
   const quote = await env.DB.prepare(
-    "SELECT q.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name FROM quotes q JOIN clients c ON c.id = q.client_id JOIN businesses b ON b.id = q.business_id WHERE q.id = ? AND q.business_id = ? LIMIT 1"
+    "SELECT q.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name, b.business_email, b.business_phone, b.business_address, b.abn FROM quotes q JOIN clients c ON c.id = q.client_id JOIN businesses b ON b.id = q.business_id WHERE q.id = ? AND q.business_id = ? LIMIT 1"
   ).bind(id, business.id).first();
   if (!quote) return json({ error: "Quote not found." }, { status: 404 });
 
