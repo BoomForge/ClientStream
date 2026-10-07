@@ -31,6 +31,33 @@ export async function listInvoices(request: Request, env: Env): Promise<Response
   return json({ invoices: result.results ?? [] });
 }
 
+
+export async function getInvoice(request: Request, env: Env): Promise<Response> {
+  const context = await requireAuth(request, env);
+  if (context instanceof Response) return context;
+  const business = requireBusiness(context);
+  if (business instanceof Response) return business;
+
+  const id = invoiceId(new URL(request.url).pathname);
+  if (!id) return json({ error: "Invalid invoice id." }, { status: 400 });
+
+  const invoice = await env.DB.prepare(
+    "SELECT i.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name FROM invoices i JOIN clients c ON c.id = i.client_id JOIN businesses b ON b.id = i.business_id WHERE i.id = ? AND i.business_id = ? LIMIT 1"
+  ).bind(id, business.id).first();
+
+  if (!invoice) return json({ error: "Invoice not found." }, { status: 404 });
+
+  const items = await env.DB.prepare(
+    "SELECT id, description, quantity, unit_price_cents, sort_order FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order ASC"
+  ).bind(id).all();
+
+  const payments = await env.DB.prepare(
+    "SELECT id, provider, amount_cents, status, paid_at FROM payments WHERE invoice_id = ? AND business_id = ? ORDER BY paid_at ASC"
+  ).bind(id, business.id).all();
+
+  return json({ invoice, items: items.results ?? [], payments: payments.results ?? [] });
+}
+
 export async function createInvoice(request: Request, env: Env): Promise<Response> {
   if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
   const context = await requireAuth(request, env);
