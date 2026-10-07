@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'">
+  <title>ClientStream document</title>
+  <link rel="stylesheet" href="/print.css">
+</head>
+<body>
+  <div class="toolbar"><button id="print-button">Print / Save PDF</button><button id="close-button">Close</button></div>
+  <main class="paper" id="document">
+    <header class="doc-head">
+      <div class="brand"><span class="brand-mark">C</span><span id="business-name">ClientStream</span></div>
+      <div class="doc-title"><span id="doc-kind">Document</span><strong id="doc-number"></strong></div>
+    </header>
+    <section class="meta">
+      <div><span>Bill to</span><strong id="client-name"></strong><p id="client-company"></p><p id="client-address"></p><p id="client-email"></p></div>
+      <div class="meta-right"><p><span>Status</span><strong id="doc-status"></strong></p><p><span id="date-label">Date</span><strong id="doc-date"></strong></p><p><span id="secondary-date-label">Due</span><strong id="secondary-date"></strong></p></div>
+    </section>
+    <table>
+      <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+      <tbody id="items-body"></tbody>
+    </table>
+    <section class="totals">
+      <div><span>Subtotal</span><strong id="subtotal"></strong></div>
+      <div><span>Tax</span><strong id="tax"></strong></div>
+      <div class="grand"><span>Total</span><strong id="total"></strong></div>
+      <div id="paid-row" class="hidden"><span>Paid</span><strong id="paid"></strong></div>
+      <div id="balance-row" class="hidden grand"><span>Balance</span><strong id="balance"></strong></div>
+    </section>
+    <section id="notes-section" class="notes hidden"><span>Notes</span><p id="notes"></p></section>
+  </main>
+  <div id="error" class="error hidden"></div>
+  <script type="module" src="/print.js"></script>
+</body>
+</html>
