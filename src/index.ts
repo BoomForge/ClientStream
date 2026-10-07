@@ -9,8 +9,9 @@ import { createExpense, deleteExpense, listExpenses } from "./expenses";
 import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
 import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
 import { squareWebhook } from "./square";
+import { billingStatus, cancelBilling, createCheckout, reconcileBilling } from "./billing";
 
-const VERSION = "0.3.0-usable-mvp";
+const VERSION = "0.4.0-square-billing";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -26,6 +27,7 @@ async function api(request: Request, env: Env): Promise<Response> {
       environment: env.APP_ENV ?? "unknown",
       database: "bound",
       squareWebhook: env.SQUARE_WEBHOOK_SIGNATURE_KEY ? "configured" : "unconfigured",
+      squareBilling: env.SQUARE_ACCESS_TOKEN && env.SQUARE_LOCATION_ID && env.SQUARE_PRO_PLAN_VARIATION_ID ? "configured" : "unconfigured",
       timestamp: new Date().toISOString()
     });
   }
@@ -82,8 +84,9 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (request.method === "GET") return listInvoices(request, env);
     if (request.method === "POST") return createInvoice(request, env);
   }
-  if (/^\/api\/invoices\/[^/]+$/.test(path) && request.method === "PATCH") {
-    return updateInvoice(request, env);
+  if (/^\/api\/invoices\/[^/]+$/.test(path)) {
+    if (request.method === "GET") return getInvoice(request, env);
+    if (request.method === "PATCH") return updateInvoice(request, env);
   }
   if (/^\/api\/invoices\/[^/]+\/payments$/.test(path) && request.method === "POST") {
     return recordPayment(request, env);
@@ -96,6 +99,11 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (/^\/api\/expenses\/[^/]+$/.test(path) && request.method === "DELETE") {
     return deleteExpense(request, env);
   }
+
+  if (request.method === "GET" && path === "/api/billing/status") return billingStatus(request, env);
+  if (request.method === "POST" && path === "/api/billing/checkout") return createCheckout(request, env);
+  if (request.method === "POST" && path === "/api/billing/reconcile") return reconcileBilling(request, env);
+  if (request.method === "POST" && path === "/api/billing/cancel") return cancelBilling(request, env);
 
   if (request.method === "POST" && path === "/api/webhooks/square") return squareWebhook(request, env);
 
