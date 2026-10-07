@@ -7,41 +7,57 @@ function clientFingerprint(request: Request): string {
   return ip + "|" + ua.slice(0, 160);
 }
 
+async function limiterKey(request: Request): Promise<string> {
+  const url = new URL(request.url);
+  return url.pathname + "|" + await sha256Hex(clientFingerprint(request));
+}
+
 export async function enforceAuthRateLimit(request: Request, env: Env): Promise<Response | null> {
   if (!env.AUTH_RATE_LIMITER) return null;
-  const url = new URL(request.url);
-  const key = url.pathname + "|" + await sha256Hex(clientFingerprint(request));
-  const result = await env.AUTH_RATE_LIMITER.limit({ key });
-  return result.success
-    ? null
-    : json({ error: "Too many authentication attempts. Please try again shortly." }, {
-        status: 429,
-        headers: { "retry-after": "60" }
-      });
+  try {
+    const result = await env.AUTH_RATE_LIMITER.limit({ key: await limiterKey(request) });
+    return result.success
+      ? null
+      : json({ error: "Too many authentication attempts. Please try again shortly." }, {
+          status: 429,
+          headers: { "retry-after": "60" }
+        });
+  } catch (error) {
+    console.error("ClientStream auth rate limiter unavailable", error);
+    return null;
+  }
 }
 
 export async function enforceMutationRateLimit(request: Request, env: Env): Promise<Response | null> {
   if (!env.MUTATION_RATE_LIMITER) return null;
-  const url = new URL(request.url);
-  const key = url.pathname + "|" + await sha256Hex(clientFingerprint(request));
-  const result = await env.MUTATION_RATE_LIMITER.limit({ key });
-  return result.success
-    ? null
-    : json({ error: "Too many requests. Please slow down and try again." }, {
-        status: 429,
-        headers: { "retry-after": "60" }
-      });
+  try {
+    const result = await env.MUTATION_RATE_LIMITER.limit({ key: await limiterKey(request) });
+    return result.success
+      ? null
+      : json({ error: "Too many requests. Please slow down and try again." }, {
+          status: 429,
+          headers: { "retry-after": "60" }
+        });
+  } catch (error) {
+    console.error("ClientStream mutation rate limiter unavailable", error);
+    return null;
+  }
 }
 
 export async function enforceAiRateLimit(key: string, env: Env): Promise<Response | null> {
   if (!env.AI_RATE_LIMITER) return null;
-  const result = await env.AI_RATE_LIMITER.limit({ key });
-  return result.success
-    ? null
-    : json({ error: "Smart Write is receiving too many requests. Please try again shortly." }, {
-        status: 429,
-        headers: { "retry-after": "60" }
-      });
+  try {
+    const result = await env.AI_RATE_LIMITER.limit({ key });
+    return result.success
+      ? null
+      : json({ error: "Smart Write is receiving too many requests. Please try again shortly." }, {
+          status: 429,
+          headers: { "retry-after": "60" }
+        });
+  } catch (error) {
+    console.error("ClientStream AI rate limiter unavailable", error);
+    return null;
+  }
 }
 
 export function secureAssetResponse(response: Response): Response {

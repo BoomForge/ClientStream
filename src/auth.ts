@@ -215,6 +215,13 @@ export function requireBusiness(context: AuthContext): BusinessContext | Respons
   );
 }
 
+function registrationFailure(code: string): Response {
+  return json(
+    { error: "We couldn't create the account. Please try again.", code },
+    { status: 500 }
+  );
+}
+
 export async function register(request: Request, env: Env): Promise<Response> {
   if (!mutationOriginIsAllowed(request)) {
     return json({ error: "Origin not allowed." }, { status: 403 });
@@ -243,34 +250,57 @@ export async function register(request: Request, env: Env): Promise<Response> {
     return json({ error: "Business name must be between 2 and 120 characters." }, { status: 400 });
   }
 
-  const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE LIMIT 1")
-    .bind(email)
-    .first<{ id: string }>();
+  let existing: { id: string } | null = null;
+  try {
+    existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE LIMIT 1")
+      .bind(email)
+      .first<{ id: string }>();
+  } catch (error) {
+    console.error("ClientStream registration lookup failed", error);
+    return registrationFailure("REGISTER_LOOKUP_FAILED");
+  }
   if (existing) return json({ error: "An account already exists for that email." }, { status: 409 });
 
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const passwordHash = await derivePassword(password, salt, PASSWORD_ITERATIONS);
+  let passwordHash: Uint8Array;
+  try {
+    passwordHash = await derivePassword(password, salt, PASSWORD_ITERATIONS);
+  } catch (error) {
+    console.error("ClientStream registration password derivation failed", error);
+    return registrationFailure("REGISTER_HASH_FAILED");
+  }
   const userId = crypto.randomUUID();
   const businessId = crypto.randomUUID();
   const slug = slugify(businessName) + "-" + businessId.slice(0, 8);
   const now = new Date().toISOString();
 
-  await env.DB.batch([
-    env.DB.prepare(
-      "INSERT INTO users (id, email, display_name, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)"
-    ).bind(userId, email, displayName, now, now),
-    env.DB.prepare(
-      "INSERT INTO password_credentials (user_id, password_hash, salt, iterations, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).bind(userId, toBase64(passwordHash), toBase64(salt), PASSWORD_ITERATIONS, now, now),
-    env.DB.prepare(
-      "INSERT INTO businesses (id, name, slug, owner_user_id, plan, timezone, currency, created_at, updated_at) VALUES (?, ?, ?, ?, 'free', 'Australia/Hobart', 'AUD', ?, ?)"
-    ).bind(businessId, businessName, slug, userId, now, now),
-    env.DB.prepare(
-      "INSERT INTO memberships (business_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)"
-    ).bind(businessId, userId, now)
-  ]);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO users (id, email, display_name, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)"
+      ).bind(userId, email, displayName, now, now),
+      env.DB.prepare(
+        "INSERT INTO password_credentials (user_id, password_hash, salt, iterations, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+      ).bind(userId, toBase64(passwordHash), toBase64(salt), PASSWORD_ITERATIONS, now, now),
+      env.DB.prepare(
+        "INSERT INTO businesses (id, name, slug, owner_user_id, plan, timezone, currency, created_at, updated_at) VALUES (?, ?, ?, ?, 'free', 'Australia/Hobart', 'AUD', ?, ?)"
+      ).bind(businessId, businessName, slug, userId, now, now),
+      env.DB.prepare(
+        "INSERT INTO memberships (business_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)"
+      ).bind(businessId, userId, now)
+    ]);
+  } catch (error) {
+    console.error("ClientStream registration account write failed", error);
+    return registrationFailure("REGISTER_WRITE_FAILED");
+  }
 
-  const session = await createSession(env, userId);
+  let session: { token: string; expiresAt: string };
+  try {
+    session = await createSession(env, userId);
+  } catch (error) {
+    console.error("ClientStream registration session creation failed", error);
+    return registrationFailure("REGISTER_SESSION_FAILED");
+  }
   let verificationSent = false;
   if (emailConfigured(env)) {
     try {
