@@ -35,6 +35,7 @@
         <label>Email<input name="email" type="email" autocomplete="email" required></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">Sign in</button>
+        <button class="text-button" type="button" id="forgot-password-button">Forgot password?</button>
       </form>
 
       <form id="register-form" class="stack hidden">
@@ -69,6 +70,14 @@
     </aside>
 
     <main class="workspace">
+      <div class="verification-banner hidden" id="verification-banner">
+        <div>
+          <strong>Verify your email</strong>
+          <span>Verify <span id="verification-email"></span> before sending quotes or invoices to customers.</span>
+        </div>
+        <button class="secondary small" id="send-verification-button">Send verification email</button>
+      </div>
+
       <header class="workspace-header">
         <div>
           <p class="eyebrow" id="business-label">CLIENTSTREAM</p>
@@ -240,6 +249,26 @@
       <p id="payment-balance" class="hint"></p>
       <label>Amount received (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
       <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Record payment</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="forgot-dialog">
+    <form id="forgot-form" method="dialog" class="dialog-form compact">
+      <div class="dialog-head"><h3>Reset password</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <p class="dialog-copy">Enter your ClientStream account email. If the account exists, we’ll send a one-time reset link.</p>
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Send reset link</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="reset-dialog">
+    <form id="reset-form" method="dialog" class="dialog-form compact">
+      <div class="dialog-head"><h3>Choose a new password</h3></div>
+      <input type="hidden" name="token">
+      <label>New password<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+      <label>Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+      <p class="hint">Use at least 10 characters.</p>
+      <div class="dialog-actions"><button class="primary" type="submit">Save new password</button></div>
     </form>
   </dialog>
 

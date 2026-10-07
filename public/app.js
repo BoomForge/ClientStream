@@ -54,6 +54,12 @@ function showAuth() {
   $("#app-view").classList.add("hidden");
 }
 
+function renderVerification() {
+  const show = Boolean(state.me?.emailConfigured && !state.me?.user?.emailVerified);
+  $("#verification-banner").classList.toggle("hidden", !show);
+  if (show) $("#verification-email").textContent = state.me.user.email;
+}
+
 async function showApp() {
   $("#auth-view").classList.add("hidden");
   $("#app-view").classList.remove("hidden");
@@ -61,11 +67,49 @@ async function showApp() {
   $("#account-name").textContent = state.me.user.displayName || "Account";
   $("#account-email").textContent = state.me.user.email;
   $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
+  renderVerification();
   await refreshAll();
   await handleBillingReturn();
 }
 
+function cleanAuthQuery(parameter) {
+  const url = new URL(location.href);
+  url.searchParams.delete(parameter);
+  history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
+async function handleAuthLinkBeforeBoot() {
+  const url = new URL(location.href);
+  const resetToken = url.searchParams.get("reset");
+  const verifyToken = url.searchParams.get("verify");
+
+  if (resetToken) {
+    showAuth();
+    $("#reset-form").elements.token.value = resetToken;
+    $("#reset-dialog").showModal();
+    return true;
+  }
+
+  if (verifyToken) {
+    try {
+      await api("/api/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify({ token: verifyToken })
+      });
+      cleanAuthQuery("verify");
+      toast("Email verified.");
+    } catch (error) {
+      cleanAuthQuery("verify");
+      toast(error.message, true);
+    }
+  }
+
+  return false;
+}
+
 async function boot() {
+  if (await handleAuthLinkBeforeBoot()) return;
+
   try {
     state.me = await api("/api/me");
     await showApp();
@@ -122,6 +166,62 @@ $("#register-form").addEventListener("submit", async (event) => {
   }
 });
 
+$("#forgot-password-button").addEventListener("click", () => {
+  const email = $("#login-form").elements.email.value;
+  $("#forgot-form").reset();
+  if (email) $("#forgot-form").elements.email.value = email;
+  $("#forgot-dialog").showModal();
+});
+
+$("#forgot-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  try {
+    const result = await api("/api/auth/request-reset", {
+      method: "POST",
+      body: JSON.stringify({ email: form.get("email") })
+    });
+    $("#forgot-dialog").close();
+    toast(result.message || "If the account exists, a reset link has been sent.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$("#reset-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const password = String(form.get("password") || "");
+  const confirmPassword = String(form.get("confirmPassword") || "");
+  if (password !== confirmPassword) {
+    toast("The passwords do not match.", true);
+    return;
+  }
+
+  try {
+    await api("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token: form.get("token"), password })
+    });
+    cleanAuthQuery("reset");
+    $("#reset-dialog").close();
+    state.me = await api("/api/me");
+    await showApp();
+    toast("Password updated.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$("#send-verification-button").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/auth/send-verification", { method: "POST" });
+    toast(result.sent ? "Verification email sent." : "A verification email was already sent recently.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
 $("#signout-button").addEventListener("click", async () => {
   try { await api("/api/auth/logout", { method: "POST" }); } catch {}
   state.me = null;
@@ -166,6 +266,7 @@ async function refreshIdentity() {
   $("#account-name").textContent = state.me.user.displayName || "Account";
   $("#account-email").textContent = state.me.user.email;
   $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
+  renderVerification();
 }
 
 async function refreshAll() {
@@ -225,7 +326,7 @@ async function handleBillingReturn() {
     const result = await api("/api/billing/reconcile", { method: "POST" });
     if (result.active) {
       await refreshIdentity();
-      await loadBilling();
+      await Promise.all([loadBilling(), loadQuotes(), loadInvoices()]);
       $("#reconcile-billing").classList.add("hidden");
       toast("ClientStream Pro is active.");
     } else {
@@ -257,7 +358,7 @@ $("#reconcile-billing").addEventListener("click", async () => {
       return;
     }
     await refreshIdentity();
-    await loadBilling();
+    await Promise.all([loadBilling(), loadQuotes(), loadInvoices()]);
     $("#reconcile-billing").classList.add("hidden");
     toast("ClientStream Pro is active.");
   } catch (error) {
@@ -507,6 +608,28 @@ $("#job-form").addEventListener("submit", async (event) => {
 });
 
 
+
+function canEmailDocuments() {
+  return Boolean(
+    state.me?.business?.plan === "pro" &&
+    state.me?.emailConfigured &&
+    state.me?.user?.emailVerified
+  );
+}
+
+async function emailDocument(type, id) {
+  try {
+    const result = await api("/api/" + (type === "quote" ? "quotes" : "invoices") + "/" + encodeURIComponent(id) + "/send-email", {
+      method: "POST"
+    });
+    toast((type === "quote" ? "Quote" : "Invoice") + " emailed to " + result.recipient + ".");
+    if (type === "quote") await loadQuotes();
+    else await Promise.all([loadInvoices(), loadDashboard()]);
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
 async function loadQuotes() {
   try {
     const data = await api("/api/quotes");
@@ -533,6 +656,9 @@ function renderQuotes() {
     actions.append(button("Print", () => {
       window.open("/print.html?type=quote&id=" + encodeURIComponent(quote.id), "_blank", "noopener");
     }));
+    if (canEmailDocuments()) {
+      actions.append(button("Email", () => emailDocument("quote", quote.id)));
+    }
 
     if (quote.status === "draft") {
       actions.append(button("Mark sent", async () => {
@@ -631,6 +757,9 @@ function renderInvoices() {
     actions.append(button("Print", () => {
       window.open("/print.html?type=invoice&id=" + encodeURIComponent(invoice.id), "_blank", "noopener");
     }));
+    if (canEmailDocuments()) {
+      actions.append(button("Email", () => emailDocument("invoice", invoice.id)));
+    }
 
     if (invoice.status === "draft") {
       actions.append(button("Mark sent", async () => {

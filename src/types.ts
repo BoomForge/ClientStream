@@ -10,12 +10,15 @@ export interface Env {
   SQUARE_LOCATION_ID?: string;
   SQUARE_PRO_PLAN_VARIATION_ID?: string;
   SQUARE_ENVIRONMENT?: "sandbox" | "production";
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
 }
 
 export interface SessionUser {
   id: string;
   email: string;
   displayName: string | null;
+  emailVerified: boolean;
 }
 
 export interface BusinessContext {
