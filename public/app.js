@@ -6,7 +6,11 @@ const state = {
   invoices: [],
   expenses: [],
   dashboard: null,
-  billing: null
+  billing: null,
+  today: null,
+  report: null,
+  settings: null,
+  smartUsage: null
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -231,7 +235,7 @@ $("#signout-button").addEventListener("click", async () => {
 function setView(name) {
   $$(".view").forEach((view) => view.classList.toggle("active", view.dataset.page === name));
   $$(".nav-item[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
-  const titles = { dashboard: "Overview", clients: "Clients", jobs: "Jobs", quotes: "Quotes", invoices: "Invoices", expenses: "Expenses" };
+  const titles = { dashboard: "Today", clients: "Clients", jobs: "Jobs", quotes: "Quotes", invoices: "Invoices", expenses: "Expenses", reports: "Reports", smart: "Smart Write", settings: "Settings" };
   $("#view-title").textContent = titles[name] || "ClientStream";
 }
 
@@ -270,7 +274,19 @@ async function refreshIdentity() {
 }
 
 async function refreshAll() {
-  await Promise.all([loadDashboard(), loadBilling(), loadClients(), loadJobs(), loadQuotes(), loadInvoices(), loadExpenses()]);
+  await Promise.all([
+    loadDashboard(),
+    loadBilling(),
+    loadClients(),
+    loadJobs(),
+    loadQuotes(),
+    loadInvoices(),
+    loadExpenses(),
+    loadToday(),
+    loadSettings(),
+    loadSmartUsage(),
+    loadReport()
+  ]);
 }
 
 async function loadBilling() {
@@ -377,6 +393,314 @@ $("#cancel-billing").addEventListener("click", async () => {
   }
 });
 
+
+function localDateTimeInput(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+async function loadToday() {
+  try {
+    state.today = await api("/api/today");
+    renderToday();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function makeTodayItem(icon, title, detail, due, actions = []) {
+  const row = document.createElement("div");
+  row.className = "today-item" + (due ? " due" : "");
+
+  const iconNode = document.createElement("div");
+  iconNode.className = "today-icon";
+  iconNode.textContent = icon;
+
+  const copy = document.createElement("div");
+  copy.className = "today-copy";
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const span = document.createElement("span");
+  span.textContent = detail;
+  copy.append(strong, span);
+
+  const actionBox = document.createElement("div");
+  actionBox.className = "today-actions";
+  actions.forEach((action) => actionBox.append(action));
+
+  row.append(iconNode, copy, actionBox);
+  return row;
+}
+
+function renderToday() {
+  const list = $("#today-list");
+  const nodes = [];
+  const data = state.today || {};
+
+  (data.reminders || []).forEach((reminder) => {
+    const title = reminder.payload?.title || "Reminder";
+    const client = reminder.client_name ? " · " + reminder.client_name : "";
+    const detail = dateText(reminder.scheduled_for) + client + (reminder.payload?.note ? " · " + reminder.payload.note : "");
+    const done = button("Done", async () => {
+      try {
+        await api("/api/reminders/" + encodeURIComponent(reminder.id) + "/complete", { method: "POST" });
+        await loadToday();
+        toast("Reminder completed.");
+      } catch (error) { toast(error.message, true); }
+    });
+    const cancel = button("Cancel", async () => {
+      try {
+        await api("/api/reminders/" + encodeURIComponent(reminder.id), { method: "DELETE" });
+        await loadToday();
+      } catch (error) { toast(error.message, true); }
+    }, true);
+    nodes.push(makeTodayItem("✓", title, detail, reminder.due, [done, cancel]));
+  });
+
+  (data.overdueInvoices || []).forEach((invoice) => {
+    const outstanding = Math.max(0, invoice.total_cents - invoice.amount_paid_cents);
+    nodes.push(makeTodayItem(
+      "$",
+      "Overdue · " + invoice.number,
+      invoice.client_name + " · " + money(outstanding) + " outstanding · due " + dateText(invoice.due_at),
+      true,
+      [button("Invoices", () => setView("invoices"))]
+    ));
+  });
+
+  (data.upcomingJobs || []).forEach((job) => {
+    nodes.push(makeTodayItem(
+      "J",
+      job.title,
+      (job.client_name ? job.client_name + " · " : "") + dateText(job.scheduled_for),
+      false,
+      [button("Jobs", () => setView("jobs"))]
+    ));
+  });
+
+  if (!nodes.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Nothing needs attention right now.";
+    nodes.push(empty);
+  }
+
+  list.replaceChildren(...nodes);
+}
+
+$("#add-reminder").addEventListener("click", () => {
+  const form = $("#reminder-form");
+  form.reset();
+  fillClientSelects();
+  form.elements.scheduledFor.value = localDateTimeInput(new Date(Date.now() + 60 * 60 * 1000));
+  $("#reminder-dialog").showModal();
+});
+
+$("#reminder-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const date = new Date(String(form.get("scheduledFor") || ""));
+  if (Number.isNaN(date.getTime())) {
+    toast("Choose a valid reminder time.", true);
+    return;
+  }
+
+  try {
+    await api("/api/reminders", {
+      method: "POST",
+      body: JSON.stringify({
+        title: form.get("title"),
+        kind: form.get("kind"),
+        clientId: form.get("clientId"),
+        scheduledFor: date.toISOString(),
+        note: form.get("note")
+      })
+    });
+    $("#reminder-dialog").close();
+    await loadToday();
+    toast("Reminder added.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+function defaultFinancialYear() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const startYear = now.getMonth() >= 6 ? year : year - 1;
+  return {
+    from: startYear + "-07-01",
+    to: (startYear + 1) + "-06-30"
+  };
+}
+
+function ensureReportDates() {
+  const form = $("#report-form");
+  if (!form.elements.from.value || !form.elements.to.value) {
+    const range = defaultFinancialYear();
+    form.elements.from.value = range.from;
+    form.elements.to.value = range.to;
+  }
+}
+
+async function loadReport() {
+  ensureReportDates();
+  const form = $("#report-form");
+  const params = new URLSearchParams({
+    from: form.elements.from.value,
+    to: form.elements.to.value
+  });
+
+  try {
+    state.report = await api("/api/reports/summary?" + params.toString());
+    renderReport();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function renderReport() {
+  const summary = state.report?.summary || {};
+  const definitions = [
+    ["Income received", money(summary.incomeCents)],
+    ["Expenses", money(summary.expenseCents)],
+    ["Net", money(summary.netCents)],
+    ["Outstanding", money(summary.outstandingCents)]
+  ];
+
+  $("#report-metrics").replaceChildren(...definitions.map(([label, value]) => {
+    const card = document.createElement("article");
+    card.className = "metric";
+    const span = document.createElement("span");
+    span.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    card.append(span, strong);
+    return card;
+  }));
+
+  const pro = state.me?.business?.plan === "pro";
+  $("#export-report").disabled = !pro;
+  $("#export-report").textContent = pro ? "Export CSV" : "CSV export · Pro";
+  $("#report-note").textContent =
+    "Range " + state.report.range.from + " to " + state.report.range.to +
+    " · " + (summary.invoiceCount || 0) + " invoices · " +
+    (summary.paymentCount || 0) + " payments · " + (summary.expenseCount || 0) + " expenses.";
+}
+
+$("#report-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await loadReport();
+});
+
+$("#export-report").addEventListener("click", () => {
+  if (state.me?.business?.plan !== "pro") {
+    toast("EOFY CSV export is available on ClientStream Pro.", true);
+    return;
+  }
+  const form = $("#report-form");
+  const params = new URLSearchParams({ from: form.elements.from.value, to: form.elements.to.value });
+  location.href = "/api/reports/export.csv?" + params.toString();
+});
+
+async function loadSmartUsage() {
+  try {
+    state.smartUsage = await api("/api/smart-write/usage");
+    renderSmartUsage();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function renderSmartUsage() {
+  const usage = state.smartUsage;
+  if (!usage) return;
+  $("#smart-usage").textContent = usage.used + " / " + usage.limit + " this month";
+}
+
+$("#smart-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const submit = event.currentTarget.querySelector("button[type='submit']");
+  submit.disabled = true;
+  submit.textContent = "Writing…";
+
+  try {
+    const result = await api("/api/smart-write", {
+      method: "POST",
+      body: JSON.stringify({
+        kind: form.get("kind"),
+        clientName: form.get("clientName"),
+        roughNotes: form.get("roughNotes")
+      })
+    });
+    $("#smart-result").value = result.message;
+    $("#copy-smart").disabled = false;
+    $("#smart-mode").textContent = result.usedAI
+      ? "Written with Cloudflare Workers AI."
+      : "Written with ClientStream's offline-safe template fallback.";
+    state.smartUsage = result.usage;
+    renderSmartUsage();
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Write message";
+  }
+});
+
+$("#copy-smart").addEventListener("click", async () => {
+  const value = $("#smart-result").value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    toast("Message copied.");
+  } catch {
+    $("#smart-result").select();
+    document.execCommand("copy");
+    toast("Message copied.");
+  }
+});
+
+async function loadSettings() {
+  try {
+    const data = await api("/api/settings");
+    state.settings = data.settings || {};
+    const form = $("#settings-form");
+    form.elements.name.value = state.settings.name || "";
+    form.elements.abn.value = state.settings.abn || "";
+    form.elements.businessEmail.value = state.settings.business_email || "";
+    form.elements.businessPhone.value = state.settings.business_phone || "";
+    form.elements.businessAddress.value = state.settings.business_address || "";
+    form.elements.googleReviewUrl.value = state.settings.google_review_url || "";
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+$("#settings-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  try {
+    const data = await api("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: form.get("name"),
+        abn: form.get("abn"),
+        businessEmail: form.get("businessEmail"),
+        businessPhone: form.get("businessPhone"),
+        businessAddress: form.get("businessAddress"),
+        googleReviewUrl: form.get("googleReviewUrl")
+      })
+    });
+    state.settings = data.settings;
+    await refreshIdentity();
+    toast("Business profile saved.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
 async function loadDashboard() {
   try {
     state.dashboard = await api("/api/dashboard");
@@ -443,9 +767,14 @@ async function loadClients() {
 }
 
 function fillClientSelects() {
-  const selects = [$("#job-form select[name='clientId']"), $("#quote-form select[name='clientId']"), $("#invoice-form select[name='clientId']")];
+  const selects = [
+    $("#job-form select[name='clientId']"),
+    $("#quote-form select[name='clientId']"),
+    $("#invoice-form select[name='clientId']"),
+    $("#reminder-form select[name='clientId']")
+  ].filter(Boolean);
   selects.forEach((select, index) => {
-    const first = index === 0 ? [["", "No client"]] : [["", "Select a client"]];
+    const first = (index === 0 || index === 3) ? [["", "No client"]] : [["", "Select a client"]];
     select.replaceChildren(...[...first, ...state.clients.map((client) => [client.id, client.name])].map(([value, label]) => {
       const option = document.createElement("option");
       option.value = value;
