@@ -29,6 +29,10 @@ async function load() {
 
   document.title = (type === "invoice" ? "Invoice " : "Quote ") + doc.number;
   setText("#business-name", doc.business_name || "ClientStream");
+  setText("#business-abn", doc.abn ? "ABN " + doc.abn : "");
+  setText("#business-address", doc.business_address);
+  setText("#business-email", doc.business_email);
+  setText("#business-phone", doc.business_phone);
   setText("#doc-kind", type === "invoice" ? "Invoice" : "Quote");
   setText("#doc-number", doc.number);
   setText("#client-name", doc.client_name);
