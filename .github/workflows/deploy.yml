@@ -57,3 +57,9 @@ jobs:
       - name: Deploy Worker and static assets
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler deploy
+
+      - name: End-to-end production smoke test
+        if: steps.cloudflare.outputs.ready == 'true'
+        env:
+          CLIENTSTREAM_SMOKE_URL: https://clientstream.theevansorrell.workers.dev
+        run: npm run smoke:production

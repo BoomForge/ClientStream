@@ -13,6 +13,11 @@ export interface Env {
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   AI?: Ai;
+  AUTH_RATE_LIMITER?: RateLimit;
+  MUTATION_RATE_LIMITER?: RateLimit;
+  AI_RATE_LIMITER?: RateLimit;
+  PUBLIC_APP_URL?: string;
+  SUPPORT_EMAIL?: string;
 }
 
 export interface SessionUser {

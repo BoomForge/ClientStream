@@ -703,6 +703,40 @@ $("#settings-form").addEventListener("submit", async (event) => {
   }
 });
 
+$("#export-account").addEventListener("click", () => {
+  location.href = "/api/account/export";
+});
+
+$("#delete-account").addEventListener("click", () => {
+  $("#delete-account-form").reset();
+  $("#delete-account-dialog").showModal();
+});
+
+$("#delete-account-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  if (String(form.get("confirmation") || "").trim() !== "DELETE") {
+    toast("Type DELETE to confirm permanent deletion.", true);
+    return;
+  }
+
+  try {
+    await api("/api/account/delete", {
+      method: "POST",
+      body: JSON.stringify({
+        password: form.get("password"),
+        confirmation: form.get("confirmation")
+      })
+    });
+    $("#delete-account-dialog").close();
+    state.me = null;
+    showAuth();
+    toast("ClientStream business deleted.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
 async function loadDashboard() {
   try {
     state.dashboard = await api("/api/dashboard");

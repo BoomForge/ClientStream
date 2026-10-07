@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en-AU" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ClientStream | Simple Client Tracking for Small Business</title>
+  <meta name="description" content="ClientStream keeps your clients, quotes, invoices, reminders and follow-ups together in one simple system built for sole traders and small businesses.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta property="og:title" content="ClientStream | Simple Client Tracking for Small Business">
+  <meta property="og:description" content="Manage clients, quotes, invoices, reminders and follow-ups without complicated CRM software.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://app.clientstream.io/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ClientStream | Simple Client Tracking for Small Business">
+  <meta name="twitter:description" content="Keep every client, invoice and follow-up in one simple place.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1e3a8a;
+      --navy-dark: #10245c;
+      --sky: #0ea5e9;
+      --sky-light: #e0f2fe;
+      --ink: #0f172a;
+      --muted: #5b677a;
+      --line: #dbe4ef;
+      --surface: #ffffff;
+      --soft: #f7f9fc;
+      --success: #0f9f6e;
+      --warning: #d97706;
+      --shadow: 0 24px 70px rgba(15, 23, 42, .12);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--surface);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+    img, svg { max-width: 100%; }
+    .container { width: min(1160px, calc(100% - 40px)); margin-inline: auto; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--navy); background: var(--sky-light); border: 1px solid #bae6fd; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 800; letter-spacing: .01em; }
+    .eyebrow-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 0 5px rgba(14,165,233,.12); }
+    .section { padding: 92px 0; }
+    .section-soft { background: var(--soft); }
+    .section-dark { color: #fff; background: radial-gradient(circle at 20% 0%, rgba(14,165,233,.28), transparent 35%), linear-gradient(135deg, var(--navy-dark), var(--navy)); }
+    .section-heading { max-width: 720px; margin: 0 auto 46px; text-align: center; }
+    .section-heading h2 { margin: 16px 0 14px; font-size: clamp(32px, 5vw, 50px); line-height: 1.06; letter-spacing: -.045em; }
+    .section-heading p { margin: 0; color: var(--muted); line-height: 1.75; font-size: 17px; }
+    .section-dark .section-heading p { color: rgba(255,255,255,.75); }
+    .btn { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 9px; border-radius: 12px; padding: 0 20px; border: 1px solid transparent; font-weight: 800; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; cursor: pointer; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { color: #fff; background: var(--navy); box-shadow: 0 12px 30px rgba(30,58,138,.24); }
+    .btn-primary:hover { background: var(--navy-dark); }
+    .btn-sky { color: #fff; background: var(--sky); box-shadow: 0 12px 30px rgba(14,165,233,.25); }
+    .btn-outline { color: var(--navy); background: #fff; border-color: var(--line); }
+    .btn-ghost { color: #fff; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.26); }
+    .logo { display: inline-flex; align-items: center; gap: 11px; font-weight: 900; font-size: 20px; letter-spacing: -.035em; color: var(--navy); }
+    .logo-mark { width: 42px; height: 32px; flex: 0 0 auto; }
+    .nav { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.92); border-bottom: 1px solid rgba(219,228,239,.9); backdrop-filter: blur(18px); }
+    .nav-inner { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 22px; }
+    .nav-links { display: flex; align-items: center; gap: 28px; color: #40506a; font-size: 14px; font-weight: 700; }
+    .nav-links a:hover { color: var(--navy); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .mobile-cta { display: none; }
+
+    .hero { position: relative; overflow: hidden; padding: 86px 0 105px; background: linear-gradient(180deg, #fff 0%, #f3f8ff 100%); }
+    .hero::before { content: ""; position: absolute; width: 620px; height: 620px; right: -250px; top: -300px; background: radial-gradient(circle, rgba(14,165,233,.18), rgba(14,165,233,0) 68%); }
+    .hero-grid { position: relative; display: grid; grid-template-columns: 1.02fr .98fr; gap: 60px; align-items: center; }
+    .hero h1 { margin: 22px 0; font-size: clamp(46px, 6.2vw, 76px); line-height: .99; letter-spacing: -.062em; }
+    .hero h1 span { color: var(--sky); }
+    .hero-copy { margin: 0; max-width: 650px; color: var(--muted); font-size: clamp(18px, 2.1vw, 21px); line-height: 1.65; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .hero-note { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 22px; color: #536078; font-size: 13px; font-weight: 700; }
+    .hero-note span { display: inline-flex; align-items: center; gap: 7px; }
+    .check { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; background: var(--success); font-size: 11px; }
+
+    .app-shell { position: relative; border: 1px solid #cbd9e8; border-radius: 24px; background: #fff; box-shadow: var(--shadow); overflow: hidden; transform: rotate(1deg); }
+    .window-bar { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #e5ebf2; background: #f8fafc; }
+    .window-dots { display: flex; gap: 6px; }
+    .window-dots i { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; }
+    .window-title { color: #64748b; font-size: 11px; font-weight: 700; }
+    .app-layout { min-height: 480px; display: grid; grid-template-columns: 116px 1fr; }
+    .app-sidebar { padding: 18px 12px; color: #dce8ff; background: var(--navy-dark); }
+    .app-brand { display: flex; gap: 7px; align-items: center; margin-bottom: 25px; color: #fff; font-size: 12px; font-weight: 900; }
+    .app-brand-badge { width: 23px; height: 19px; border-radius: 7px; background: linear-gradient(135deg, var(--sky), #7dd3fc); }
+    .app-nav-item { margin: 7px 0; padding: 9px 8px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+    .app-nav-item.active { color: #fff; background: rgba(255,255,255,.13); }
+    .app-main { padding: 18px; background: #f8fafc; }
+    .app-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .app-top h3 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .mini-button { padding: 7px 10px; border-radius: 7px; color: #fff; background: var(--sky); font-size: 9px; font-weight: 800; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 17px 0; }
+    .stat-card { padding: 12px; border: 1px solid #e1e8f0; border-radius: 11px; background: #fff; }
+    .stat-label { color: #64748b; font-size: 8px; font-weight: 700; }
+    .stat-value { margin-top: 7px; font-size: 18px; font-weight: 900; }
+    .stat-change { margin-top: 4px; color: var(--success); font-size: 7px; font-weight: 800; }
+    .mock-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; }
+    .mock-card { border: 1px solid #e1e8f0; border-radius: 12px; background: #fff; overflow: hidden; }
+    .mock-card-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; border-bottom: 1px solid #eef2f7; font-size: 9px; font-weight: 900; }
+    .task { display: grid; grid-template-columns: 7px 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    .task:last-child { border-bottom: 0; }
+    .task-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sky); }
+    .task-title { font-size: 8px; font-weight: 800; }
+    .task-sub { margin-top: 2px; color: #64748b; font-size: 7px; }
+    .pill { padding: 4px 6px; border-radius: 999px; color: var(--navy); background: var(--sky-light); font-size: 6px; font-weight: 900; }
+    .chart { height: 145px; padding: 14px 12px 8px; display: flex; gap: 7px; align-items: flex-end; }
+    .bar { flex: 1; min-height: 20px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, var(--sky), var(--navy)); opacity: .9; }
+    .chart-labels { display: flex; justify-content: space-around; padding: 0 9px 11px; color: #94a3b8; font-size: 6px; }
+
+    .trust-strip { border-block: 1px solid var(--line); background: #fff; }
+    .trust-inner { min-height: 92px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 24px; text-align: center; color: #536078; font-size: 13px; font-weight: 800; }
+    .trust-item { display: flex; align-items: center; justify-content: center; gap: 9px; }
+    .trust-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--navy); background: var(--sky-light); font-size: 17px; }
+
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .feature-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; box-shadow: 0 12px 34px rgba(15,23,42,.045); }
+    .feature-icon { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, var(--navy), var(--sky)); font-size: 22px; box-shadow: 0 10px 24px rgba(30,58,138,.18); }
+    .feature-card h3 { margin: 20px 0 10px; font-size: 20px; letter-spacing: -.025em; }
+    .feature-card p { margin: 0; color: var(--muted); line-height: 1.65; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: center; }
+    .split h2 { margin: 16px 0; font-size: clamp(34px, 4.6vw, 52px); line-height: 1.05; letter-spacing: -.045em; }
+    .split-copy { color: var(--muted); line-height: 1.75; font-size: 17px; }
+    .benefit-list { display: grid; gap: 15px; margin: 28px 0 0; }
+    .benefit { display: grid; grid-template-columns: 38px 1fr; gap: 13px; align-items: start; }
+    .benefit-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; color: var(--navy); background: var(--sky-light); font-weight: 900; }
+    .benefit h3 { margin: 0 0 5px; font-size: 16px; }
+    .benefit p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+    .phone { width: min(340px, 100%); margin: auto; padding: 12px; border: 1px solid #c8d5e5; border-radius: 38px; background: #0f172a; box-shadow: var(--shadow); }
+    .phone-screen { min-height: 610px; border-radius: 29px; padding: 23px 16px 18px; background: #f8fafc; overflow: hidden; }
+    .phone-notch { width: 92px; height: 20px; margin: -13px auto 20px; border-radius: 0 0 13px 13px; background: #0f172a; }
+    .phone-head { display: flex; justify-content: space-between; align-items: center; }
+    .phone-head h3 { margin: 0; font-size: 21px; }
+    .avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--navy); font-size: 11px; font-weight: 900; }
+    .today-card { margin-top: 14px; padding: 15px; border: 1px solid #e1e8f0; border-radius: 15px; background: #fff; }
+    .today-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .today-card h4 { margin: 0; font-size: 14px; }
+    .today-card p { margin: 5px 0 0; color: #64748b; font-size: 11px; }
+    .phone-action { margin-top: 14px; display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }
+    .phone-action div { padding: 13px 8px; border-radius: 12px; text-align: center; color: var(--navy); background: var(--sky-light); font-size: 10px; font-weight: 900; }
+    .phone-nav { margin-top: 18px; padding: 11px; display: flex; justify-content: space-around; border-radius: 14px; color: #64748b; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.08); font-size: 8px; font-weight: 800; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .step { position: relative; padding: 30px; border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius); background: rgba(255,255,255,.07); backdrop-filter: blur(10px); }
+    .step-number { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: var(--navy-dark); background: #fff; font-weight: 900; }
+    .step h3 { margin: 20px 0 9px; font-size: 20px; }
+    .step p { margin: 0; color: rgba(255,255,255,.72); line-height: 1.65; }
+
+    .pricing-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; max-width: 900px; margin: auto; }
+    .price-card { position: relative; padding: 34px; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: 0 14px 40px rgba(15,23,42,.06); }
+    .price-card.featured { border: 2px solid var(--sky); box-shadow: 0 22px 60px rgba(14,165,233,.15); }
+    .popular { position: absolute; right: 22px; top: 22px; padding: 7px 10px; border-radius: 999px; color: var(--navy); background: var(--sky-light); font-size: 11px; font-weight: 900; }
+    .plan-name { font-size: 18px; font-weight: 900; }
+    .price { margin: 15px 0 4px; font-size: 46px; font-weight: 900; letter-spacing: -.055em; }
+    .price small { font-size: 15px; color: var(--muted); font-weight: 700; letter-spacing: 0; }
+    .plan-copy { min-height: 52px; color: var(--muted); line-height: 1.6; }
+    .plan-list { display: grid; gap: 12px; margin: 27px 0; padding: 0; list-style: none; }
+    .plan-list li { display: flex; align-items: flex-start; gap: 10px; color: #334155; font-size: 14px; }
+    .plan-list .check { flex: 0 0 auto; margin-top: 1px; }
+    .price-card .btn { width: 100%; }
+    .pricing-note { margin-top: 22px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    .faq { max-width: 850px; margin: auto; display: grid; gap: 12px; }
+    details { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+    summary { cursor: pointer; list-style: none; padding: 20px 22px; font-weight: 800; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; width: 27px; height: 27px; display: grid; place-items: center; border-radius: 8px; color: var(--navy); background: var(--sky-light); font-size: 18px; }
+    details[open] summary::after { content: "–"; }
+    details p { margin: 0; padding: 0 22px 21px; color: var(--muted); line-height: 1.7; }
+
+    .contact-grid { display: grid; grid-template-columns: .82fr 1.18fr; gap: 30px; align-items: stretch; }
+    .contact-copy, .contact-form { border-radius: 22px; }
+    .contact-copy { padding: 38px; color: #fff; background: linear-gradient(145deg, var(--navy-dark), var(--navy)); }
+    .contact-copy h2 { margin: 18px 0 12px; font-size: 37px; line-height: 1.06; letter-spacing: -.04em; }
+    .contact-copy p { color: rgba(255,255,255,.74); line-height: 1.7; }
+    .contact-copy .mini { display: grid; gap: 12px; margin-top: 26px; }
+    .contact-copy .mini div { display: flex; gap: 9px; align-items: center; font-size: 14px; font-weight: 700; }
+    .contact-form { padding: 34px; border: 1px solid var(--line); background: #fff; box-shadow: 0 18px 50px rgba(15,23,42,.07); }
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .field { display: grid; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 13px; font-weight: 800; }
+    .field input, .field select, .field textarea { width: 100%; border: 1px solid #cfd9e5; border-radius: 11px; padding: 13px 14px; color: var(--ink); background: #fff; outline: none; }
+    .field textarea { min-height: 120px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--sky); box-shadow: 0 0 0 4px rgba(14,165,233,.12); }
+    .honeypot { display: none !important; }
+    .form-note { margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+    .final-cta { padding: 82px 0; text-align: center; color: #fff; background: radial-gradient(circle at 80% 0%, rgba(14,165,233,.38), transparent 32%), linear-gradient(135deg, var(--navy-dark), var(--navy)); }
+    .final-cta h2 { margin: 0 auto 15px; max-width: 760px; font-size: clamp(36px, 5.2vw, 56px); line-height: 1.02; letter-spacing: -.05em; }
+    .final-cta p { margin: 0 auto 26px; max-width: 650px; color: rgba(255,255,255,.75); font-size: 17px; line-height: 1.7; }
+    .footer { padding: 34px 0; border-top: 1px solid var(--line); background: #fff; }
+    .footer-grid { display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+    .footer-copy { color: var(--muted); font-size: 13px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 20px; color: #40506a; font-size: 13px; font-weight: 700; }
+    .footer-links a:hover { color: var(--navy); }
+
+    @media (max-width: 980px) {
+      .nav-links { display: none; }
+      .hero-grid, .split, .contact-grid { grid-template-columns: 1fr; }
+      .hero-grid { gap: 54px; }
+      .hero-copy-area { text-align: center; }
+      .hero-copy { margin-inline: auto; }
+      .hero-actions, .hero-note { justify-content: center; }
+      .app-shell { max-width: 650px; margin: auto; transform: none; }
+      .feature-grid { grid-template-columns: repeat(2,1fr); }
+      .split .phone-wrap { order: 2; }
+      .steps { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .container { width: min(100% - 26px, 1160px); }
+      .section { padding: 70px 0; }
+      .nav-inner { min-height: 68px; }
+      .nav-actions .btn-outline { display: none; }
+      .nav-actions .btn-primary { display: none; }
+      .mobile-cta { display: inline-flex; min-height: 42px; padding: 0 14px; }
+      .hero { padding: 64px 0 76px; }
+      .hero h1 { font-size: 45px; }
+      .hero-actions { display: grid; }
+      .hero-actions .btn { width: 100%; }
+      .hero-note { display: grid; justify-content: start; width: fit-content; margin-inline: auto; text-align: left; }
+      .app-layout { grid-template-columns: 1fr; }
+      .app-sidebar { display: none; }
+      .app-main { padding: 12px; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .stat-grid .stat-card:last-child { grid-column: 1 / -1; }
+      .mock-grid { grid-template-columns: 1fr; }
+      .trust-inner { grid-template-columns: 1fr 1fr; padding: 18px 0; }
+      .feature-grid, .pricing-grid, .form-grid { grid-template-columns: 1fr; }
+      .feature-card, .price-card, .contact-form, .contact-copy { padding: 25px; }
+      .field.full { grid-column: auto; }
+      .phone-screen { min-height: 560px; }
+      .footer-grid { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Primary navigation">
+    <div class="container nav-inner">
+      <a class="logo" href="#top" aria-label="ClientStream home">
+        <svg class="logo-mark" viewBox="0 0 64 48" aria-hidden="true">
+          <path d="M14 4A12 12 0 0 0 2 16v6a12 12 0 0 0 12 12h6l6 6v-6h6a12 12 0 0 0 12-12v-6A12 12 0 0 0 32 4H14Z" fill="#1e3a8a"/>
+          <path d="M50 4a12 12 0 0 1 12 12v6a12 12 0 0 1-12 12h-6l-6 6v-6h-6a12 12 0 0 1-12-12v-6A12 12 0 0 1 32 4h18Z" fill="#0ea5e9" opacity=".84"/>
+        </svg>
+        ClientStream
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a class="btn btn-outline" href="https://app.clientstream.io/">Sign in</a>
+        <a class="btn btn-primary" href="https://app.clientstream.io/">Start free</a>
+        <a class="btn btn-primary mobile-cta" href="https://app.clientstream.io/">Open app</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy-area">
+          <div class="eyebrow"><span class="eyebrow-dot"></span>Built for sole traders and small businesses</div>
+          <h1>Keep every client, invoice and <span>follow-up</span> in one place.</h1>
+          <p class="hero-copy">ClientStream is a simple but powerful client tracking system that helps you stay organised, get paid, and keep customer relationships moving—without complicated CRM or accounting software.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://app.clientstream.io/">Start free <span aria-hidden="true">→</span></a>
+            <a class="btn btn-outline" href="#preview">See how it works</a>
+          </div>
+          <div class="hero-note">
+            <span><i class="check">✓</i>No payment method required</span>
+            <span><i class="check">✓</i>Works on phone and desktop</span>
+            <span><i class="check">✓</i>Australian GST and EOFY ready</span>
+          </div>
+        </div>
+
+        <div class="app-shell" id="preview" aria-label="Demonstration preview of the ClientStream dashboard">
+          <div class="window-bar">
+            <div class="window-dots"><i></i><i></i><i></i></div>
+            <div class="window-title">Dashboard demonstration</div>
+            <div></div>
+          </div>
+          <div class="app-layout">
+            <aside class="app-sidebar">
+              <div class="app-brand"><span class="app-brand-badge"></span>ClientStream</div>
+              <div class="app-nav-item active">Today</div>
+              <div class="app-nav-item">Clients</div>
+              <div class="app-nav-item">Jobs</div>
+              <div class="app-nav-item">Invoices</div>
+              <div class="app-nav-item">Money</div>
+              <div class="app-nav-item">Follow-ups</div>
+              <div class="app-nav-item">Reviews</div>
+              <div class="app-nav-item">Reports</div>
+            </aside>
+            <section class="app-main">
+              <div class="app-top"><h3>Good morning, Alex</h3><span class="mini-button">+ Quick add</span></div>
+              <div class="stat-grid">
+                <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value">$2,480</div><div class="stat-change">3 invoices to follow up</div></div>
+                <div class="stat-card"><div class="stat-label">Due today</div><div class="stat-value">4</div><div class="stat-change">Reminders and jobs</div></div>
+                <div class="stat-card"><div class="stat-label">This month</div><div class="stat-value">$8,920</div><div class="stat-change">Income recorded</div></div>
+              </div>
+              <div class="mock-grid">
+                <div class="mock-card">
+                  <div class="mock-card-head"><span>Needs your attention</span><span>View all</span></div>
+                  <div class="task"><span class="task-dot"></span><div><div class="task-title">Follow up with Greenview Realty</div><div class="task-sub">Quote sent 3 days ago</div></div><span class="pill">Follow up</span></div>
+                  <div class="task"><span class="task-dot" style="background:#d97706"></span><div><div class="task-title">Invoice CS-1042 is overdue</div><div class="task-sub">Mason Plumbing · $780</div></div><span class="pill">Remind</span></div>
+                  <div class="task"><span class="task-dot" style="background:#0f9f6e"></span><div><div class="task-title">Request a Google review</div><div class="task-sub">Job completed yesterday</div></div><span class="pill">Write</span></div>
+                </div>
+                <div class="mock-card">
+                  <div class="mock-card-head"><span>Income overview</span><span>6 months</span></div>
+                  <div class="chart"><i class="bar" style="height:40%"></i><i class="bar" style="height:56%"></i><i class="bar" style="height:48%"></i><i class="bar" style="height:75%"></i><i class="bar" style="height:68%"></i><i class="bar" style="height:94%"></i></div>
+                  <div class="chart-labels"><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="trust-strip" aria-label="Product highlights">
+      <div class="container trust-inner">
+        <div class="trust-item"><span class="trust-icon">⚡</span>Useful in minutes</div>
+        <div class="trust-item"><span class="trust-icon">📱</span>Mobile friendly</div>
+        <div class="trust-item"><span class="trust-icon">🇦🇺</span>Australian defaults</div>
+        <div class="trust-item"><span class="trust-icon">🔒</span>Your business data</div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="features">
+      <div class="container">
+        <div class="section-heading">
+          <div class="eyebrow"><span class="eyebrow-dot"></span>Everything that needs attention</div>
+          <h2>Simple enough to use every day. Powerful enough to run the work.</h2>
+          <p>ClientStream replaces scattered contacts, notes, reminders and spreadsheets with one clear place to see what happened, what is owed, and what needs doing next.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><div class="feature-icon">👥</div><h3>Client records</h3><p>Keep contact details, jobs, notes, quotes, invoices, payments and communication history connected to each customer.</p></article>
+          <article class="feature-card"><div class="feature-icon">🧾</div><h3>Quotes and invoices</h3><p>Create professional documents, apply GST, record payments and see outstanding balances without an accounting maze.</p></article>
+          <article class="feature-card"><div class="feature-icon">⏰</div><h3>Reminders and follow-ups</h3><p>Schedule the next action, chase overdue invoices and stop valuable client opportunities from disappearing.</p></article>
+          <article class="feature-card"><div class="feature-icon">✍️</div><h3>Smart Write</h3><p>Turn rough notes into clear customer messages, payment reminders, follow-ups and review requests in seconds.</p></article>
+          <article class="feature-card"><div class="feature-icon">⭐</div><h3>Google review requests</h3><p>Create a ready-to-send review request and make it easier for happy customers to support your reputation.</p></article>
+          <article class="feature-card"><div class="feature-icon">📊</div><h3>Money and EOFY reports</h3><p>Track income and expenses, understand basic business performance and export records for the Australian financial year.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container split">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span>Your day at a glance</div>
+          <h2>Open ClientStream and know exactly what needs attention.</h2>
+          <p class="split-copy">The Today view puts reminders, overdue invoices, follow-ups and recent client activity in front of you. No sales pipelines, no bookkeeping jargon, and no hunting through menus.</p>
+          <div class="benefit-list">
+            <div class="benefit"><div class="benefit-icon">1</div><div><h3>Priorities first</h3><p>See overdue payments, follow-ups and jobs that are due without building complicated workflows.</p></div></div>
+            <div class="benefit"><div class="benefit-icon">2</div><div><h3>Fast customer action</h3><p>Call, email, write a message or schedule the next reminder directly from the client record.</p></div></div>
+            <div class="benefit"><div class="benefit-icon">3</div><div><h3>Built for the field</h3><p>Large controls and responsive layouts make common tasks practical from a phone, tablet or desktop.</p></div></div>
+          </div>
+        </div>
+        <div class="phone-wrap">
+          <div class="phone" aria-label="Demonstration of the ClientStream mobile Today view">
+            <div class="phone-screen">
+              <div class="phone-notch"></div>
+              <div class="phone-head"><div><small style="color:#64748b;font-weight:700">Saturday, 25 July</small><h3>Today</h3></div><div class="avatar">AS</div></div>
+              <div class="phone-action"><div>+ Client</div><div>+ Invoice</div><div>+ Reminder</div><div>Smart Write</div></div>
+              <div class="today-card"><div class="today-card-top"><h4>Invoice overdue</h4><span class="pill">2 days</span></div><p>Brighton Garden Care · $460</p></div>
+              <div class="today-card"><div class="today-card-top"><h4>Follow up quote</h4><span class="pill">Today</span></div><p>Sarah Collins · Bathroom repair</p></div>
+              <div class="today-card"><div class="today-card-top"><h4>Request a review</h4><span class="pill">Ready</span></div><p>Job completed · Kingston Electrical</p></div>
+              <div class="today-card"><div class="today-card-top"><h4>Upcoming job</h4><span class="pill">2:30 PM</span></div><p>North Hobart · Leak inspection</p></div>
+              <div class="phone-nav"><span>Today</span><span>Clients</span><span>Invoices</span><span>More</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="how">
+      <div class="container">
+        <div class="section-heading">
+          <div class="eyebrow" style="color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)"><span class="eyebrow-dot"></span>Start without the setup headache</div>
+          <h2>From signup to useful in three steps.</h2>
+          <p>ClientStream is designed to help a small business get organised quickly, not turn setup into another project.</p>
+        </div>
+        <div class="steps">
+          <article class="step"><div class="step-number">01</div><h3>Create your account</h3><p>Start on the Free plan with no payment method required. Add only the business details you actually need.</p></article>
+          <article class="step"><div class="step-number">02</div><h3>Add your first client</h3><p>Save their contact details, add notes and create a quote, invoice, job or reminder from one record.</p></article>
+          <article class="step"><div class="step-number">03</div><h3>Work from Today</h3><p>Use the clear daily view to follow up clients, record payments and keep the next action moving.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="pricing">
+      <div class="container">
+        <div class="section-heading">
+          <div class="eyebrow"><span class="eyebrow-dot"></span>Pricing made for small business</div>
+          <h2>Start free. Upgrade when ClientStream earns its place.</h2>
+          <p>No large setup cost, no per-seat pricing and no need to commit before you have used the core system.</p>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card">
+            <div class="plan-name">Free</div>
+            <div class="price">$0</div>
+            <p class="plan-copy">A practical starting point for testing the full ClientStream workflow with a small client list.</p>
+            <ul class="plan-list">
+              <li><i class="check">✓</i>Up to 10 active clients</li>
+              <li><i class="check">✓</i>Up to 10 issued invoices</li>
+              <li><i class="check">✓</i>Basic Today view and reminders</li>
+              <li><i class="check">✓</i>Quotes and invoice PDFs</li>
+              <li><i class="check">✓</i>5 Smart Write drafts per month</li>
+              <li><i class="check">✓</i>No payment method required</li>
+            </ul>
+            <a class="btn btn-outline" href="https://app.clientstream.io/">Start free</a>
+          </article>
+          <article class="price-card featured">
+            <span class="popular">BEST VALUE</span>
+            <div class="plan-name">Pro</div>
+            <div class="price">$9.99 <small>AUD / month</small></div>
+            <p class="plan-copy">For businesses ready to manage their full client list, communication and reporting in one place.</p>
+            <ul class="plan-list">
+              <li><i class="check">✓</i>Unlimited clients and invoices</li>
+              <li><i class="check">✓</i>Jobs, income and expense tracking</li>
+              <li><i class="check">✓</i>Advanced follow-ups and reports</li>
+              <li><i class="check">✓</i>Custom logo and document branding</li>
+              <li><i class="check">✓</i>Email delivery and review requests</li>
+              <li><i class="check">✓</i>100 Smart Write drafts per month</li>
+            </ul>
+            <a class="btn btn-primary" href="https://app.clientstream.io/">Open ClientStream</a>
+          </article>
+        </div>
+        <p class="pricing-note">Cancel any time. Existing business records remain yours and can be exported. Subscription features and limits are governed by the app’s current plan settings.</p>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="container">
+        <div class="section-heading">
+          <div class="eyebrow"><span class="eyebrow-dot"></span>Straight answers</div>
+          <h2>Frequently asked questions</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Is ClientStream accounting software?</summary><p>No. ClientStream helps manage clients, quotes, invoices, payments, expenses and basic reports, but it is not a replacement for professional accounting, bookkeeping, tax or legal advice.</p></details>
+          <details><summary>Can I use it on my phone?</summary><p>Yes. ClientStream is designed to work across modern phones, tablets and desktop browsers so you can update a client on site and complete administration later.</p></details>
+          <details><summary>Does Smart Write send messages automatically?</summary><p>No. Smart Write helps draft customer communication, but you remain in control. Review and approve every message before it is sent or copied into your preferred communication app.</p></details>
+          <details><summary>Does ClientStream support GST?</summary><p>Yes. The application is designed around Australian defaults, including AUD, DD/MM/YYYY dates, GST terminology and the Australian financial year.</p></details>
+          <details><summary>What happens if I cancel Pro?</summary><p>Your existing records are preserved. Your account returns to the Free plan limits, and you can continue viewing and exporting your information. You may need to upgrade again before creating new records beyond those limits.</p></details>
+          <details><summary>Can I export my records?</summary><p>ClientStream is designed to provide practical exports for business records and EOFY preparation. Export availability can vary by plan and app version.</p></details>
+          <details><summary>Is SMS included in the subscription?</summary><p>ClientStream can prepare SMS copy and open your device’s messaging tools. Third-party carrier or messaging charges are separate unless the app clearly states otherwise.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="contact">
+      <div class="container contact-grid">
+        <div class="contact-copy">
+          <div class="eyebrow" style="color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)"><span class="eyebrow-dot"></span>Questions or feedback</div>
+          <h2>Help shape a client system built for real small businesses.</h2>
+          <p>ClientStream is being built around practical daily work. Send a question, report a problem or tell us what would make it more useful in your business.</p>
+          <div class="mini"><div>✓ Real-person replies</div><div>✓ Product and account questions</div><div>✓ Feedback from Australian small businesses welcome</div></div>
+        </div>
+        <form class="contact-form" action="https://api.web3forms.com/submit" method="POST">
+          <input type="hidden" name="access_key" value="3401cf96-720b-4321-b09e-f6db0ef951e5">
+          <input type="hidden" name="subject" value="New ClientStream App Enquiry">
+          <input type="hidden" name="redirect" value="https://app.clientstream.io/">
+          <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off">
+          <div class="form-grid">
+            <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" required autocomplete="name"></div>
+            <div class="field"><label for="business">Business</label><input id="business" name="business_name" type="text" autocomplete="organization"></div>
+            <div class="field full"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email"></div>
+            <div class="field full"><label for="topic">What can we help with?</label><select id="topic" name="topic"><option>Product question</option><option>Account or billing</option><option>Technical problem</option><option>Feature suggestion</option><option>General feedback</option></select></div>
+            <div class="field full"><label for="message">Message</label><textarea id="message" name="message" required placeholder="Tell us what happened or what you need."></textarea></div>
+            <div class="field full"><button class="btn btn-primary" type="submit">Send message</button></div>
+          </div>
+          <p class="form-note">By submitting this form, you agree that ClientStream may use the information to respond to your enquiry. Do not include passwords, payment credentials or sensitive client information.</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="container">
+        <h2>Less chasing paperwork. More control over your clients.</h2>
+        <p>Start with the Free plan and see whether ClientStream makes your next follow-up, invoice or customer message easier.</p>
+        <a class="btn btn-sky" href="https://app.clientstream.io/">Start using ClientStream <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="logo" href="#top">
+          <svg class="logo-mark" viewBox="0 0 64 48" aria-hidden="true"><path d="M14 4A12 12 0 0 0 2 16v6a12 12 0 0 0 12 12h6l6 6v-6h6a12 12 0 0 0 12-12v-6A12 12 0 0 0 32 4H14Z" fill="#1e3a8a"/><path d="M50 4a12 12 0 0 1 12 12v6a12 12 0 0 1-12 12h-6l-6 6v-6h-6a12 12 0 0 1-12-12v-6A12 12 0 0 1 32 4h18Z" fill="#0ea5e9" opacity=".84"/></svg>
+          ClientStream
+        </a>
+        <div class="footer-copy">© <span id="year"></span> ClientStream. Simple client tracking for small business.</div>
+      </div>
+      <div class="footer-links"><a href="https://app.clientstream.io/">Open app</a><a href="#contact">Contact</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></div>
+    </div>
+  </footer>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
