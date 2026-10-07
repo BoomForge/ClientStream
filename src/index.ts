@@ -70,10 +70,10 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (request.method === "GET") return listQuotes(request, env);
     if (request.method === "POST") return createQuote(request, env);
   }
-  if (/^\\/api\\/quotes\\/[^/]+\\/convert$/.test(path) && request.method === "POST") {
+  if (/^\/api\/quotes\/[^/]+\/convert$/.test(path) && request.method === "POST") {
     return convertQuote(request, env);
   }
-  if (/^\\/api\\/quotes\\/[^/]+$/.test(path)) {
+  if (/^\/api\/quotes\/[^/]+$/.test(path)) {
     if (request.method === "GET") return getQuote(request, env);
     if (request.method === "PATCH") return updateQuote(request, env);
   }
