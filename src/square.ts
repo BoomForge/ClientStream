@@ -1,5 +1,6 @@
 import type { Env } from "./types";
 import { constantTimeEqual, fromBase64, json } from "./http";
+import { processSquareSubscriptionEvent } from "./billing";
 
 async function signatureIsValid(
   signature: string,
@@ -44,7 +45,7 @@ export async function squareWebhook(request: Request, env: Env): Promise<Respons
     return json({ error: "Invalid Square signature." }, { status: 403 });
   }
 
-  let event: { event_id?: string; id?: string; type?: string };
+  let event: { event_id?: string; id?: string; type?: string; data?: { object?: { subscription?: unknown } } };
   try {
     event = JSON.parse(rawBody) as typeof event;
   } catch {
@@ -58,6 +59,18 @@ export async function squareWebhook(request: Request, env: Env): Promise<Respons
   await env.DB.prepare(
     "INSERT OR IGNORE INTO square_webhook_events (id, event_type, payload_json, status, received_at) VALUES (?, ?, ?, 'received', ?)"
   ).bind(eventId, eventType, rawBody, new Date().toISOString()).run();
+
+  try {
+    const status = await processSquareSubscriptionEvent(env, event);
+    await env.DB.prepare(
+      "UPDATE square_webhook_events SET status = ?, processed_at = ? WHERE id = ?"
+    ).bind(status === "processed" ? "processed" : "ignored", new Date().toISOString(), eventId).run();
+  } catch (error) {
+    await env.DB.prepare(
+      "UPDATE square_webhook_events SET status = 'failed', error = ? WHERE id = ?"
+    ).bind(error instanceof Error ? error.message.slice(0, 1000) : "Unknown processing error", eventId).run();
+    return json({ error: "Webhook processing failed." }, { status: 500 });
+  }
 
   return json({ received: true });
 }
