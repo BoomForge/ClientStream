@@ -5,7 +5,7 @@ import { json, mutationOriginIsAllowed } from "./http";
 
 const SQUARE_VERSION = "2026-09-16";
 
-interface SquareSubscription {
+export interface SquareSubscription {
   id: string;
   customer_id: string;
   location_id?: string;
