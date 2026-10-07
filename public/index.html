@@ -52,6 +52,7 @@
         <button class="nav-item active" data-view="dashboard">Overview</button>
         <button class="nav-item" data-view="clients">Clients</button>
         <button class="nav-item" data-view="jobs">Jobs</button>
+        <button class="nav-item" data-view="quotes">Quotes</button>
         <button class="nav-item" data-view="invoices">Invoices</button>
         <button class="nav-item" data-view="expenses">Expenses</button>
       </nav>
@@ -100,6 +101,17 @@
           </div>
           <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Scheduled</th><th>Status</th><th></th></tr></thead><tbody id="jobs-body"></tbody></table></div>
           <div class="empty hidden" id="jobs-empty">No jobs yet.</div>
+        </div>
+      </section>
+
+      <section class="view" data-page="quotes">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">ESTIMATES</p><h3>Quotes</h3></div>
+            <button class="primary small" id="add-quote">Create quote</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Quote</th><th>Client</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="quotes-body"></tbody></table></div>
+          <div class="empty hidden" id="quotes-empty">No quotes yet.</div>
         </div>
       </section>
 
@@ -153,6 +165,22 @@
       <label>Scheduled for<input name="scheduledFor" type="datetime-local"></label>
       <label>Description<textarea name="description" rows="5"></textarea></label>
       <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add job</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="quote-dialog">
+    <form id="quote-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3>Create quote</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <label>Client<select name="clientId" required></select></label>
+      <label>Item description<input name="description" required maxlength="500"></label>
+      <div class="three-col">
+        <label>Quantity<input name="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+        <label>Unit price (AUD)<input name="unitPrice" type="number" min="0" step="0.01" required></label>
+        <label>GST / tax (AUD)<input name="tax" type="number" min="0" step="0.01" value="0"></label>
+      </div>
+      <label>Expires<input name="expiresAt" type="date"></label>
+      <label>Notes<textarea name="notes" rows="3"></textarea></label>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Create quote</button></div>
     </form>
   </dialog>
 
