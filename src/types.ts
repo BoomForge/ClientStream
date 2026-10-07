@@ -12,6 +12,7 @@ export interface Env {
   SQUARE_ENVIRONMENT?: "sandbox" | "production";
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
+  AI?: Ai;
 }
 
 export interface SessionUser {
