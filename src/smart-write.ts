@@ -2,6 +2,7 @@ import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
 import { json, mutationOriginIsAllowed, readJson, textValue } from "./http";
+import { enforceAiRateLimit } from "./security";
 
 type SmartKind = "follow_up" | "payment_reminder" | "review_request" | "appointment" | "general";
 
@@ -113,6 +114,9 @@ export async function smartWrite(request: Request, env: Env): Promise<Response> 
   if (context instanceof Response) return context;
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
+
+  const limited = await enforceAiRateLimit(business.id, env);
+  if (limited) return limited;
 
   const body = await readJson<{
     kind?: unknown;
