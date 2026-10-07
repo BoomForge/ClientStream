@@ -1,6 +1,7 @@
 import type { Env } from "./types";
 import { constantTimeEqual, fromBase64, json } from "./http";
 import { processSquareSubscriptionEvent } from "./billing";
+import type { SquareSubscription } from "./billing";
 
 async function signatureIsValid(
   signature: string,
@@ -45,7 +46,7 @@ export async function squareWebhook(request: Request, env: Env): Promise<Respons
     return json({ error: "Invalid Square signature." }, { status: 403 });
   }
 
-  let event: { event_id?: string; id?: string; type?: string; data?: { object?: { subscription?: unknown } } };
+  let event: { event_id?: string; id?: string; type?: string; data?: { object?: { subscription?: SquareSubscription } } };
   try {
     event = JSON.parse(rawBody) as typeof event;
   } catch {
