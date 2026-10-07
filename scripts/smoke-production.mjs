@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";\n\nconst base = (process.env.CLIENTSTREAM_SMOKE_URL || "https://clientstream.theevansorrell.workers.dev").replace(/\/$/, "");
+import { readFileSync } from "node:fs";
+
+const base = (process.env.CLIENTSTREAM_SMOKE_URL || "https://clientstream.theevansorrell.workers.dev").replace(/\/$/, "");
 const password = "SmokeTest-" + crypto.randomUUID() + "-Aa1!";
 const email = "smoke-" + Date.now() + "-" + crypto.randomUUID().slice(0, 8) + "@example.invalid";
 let cookie = "";
