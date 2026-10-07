@@ -1,4 +1,4 @@
-const base = (process.env.CLIENTSTREAM_SMOKE_URL || "https://clientstream.theevansorrell.workers.dev").replace(/\/$/, "");
+import { readFileSync } from "node:fs";\n\nconst base = (process.env.CLIENTSTREAM_SMOKE_URL || "https://clientstream.theevansorrell.workers.dev").replace(/\/$/, "");
 const password = "SmokeTest-" + crypto.randomUUID() + "-Aa1!";
 const email = "smoke-" + Date.now() + "-" + crypto.randomUUID().slice(0, 8) + "@example.invalid";
 let cookie = "";
@@ -37,8 +37,22 @@ async function cleanup() {
 }
 
 try {
-  const health = await call("/api/health", { method: "GET" });
-  if (health.status !== "ok" || health.database !== "bound") throw new Error("Health check failed.");
+  const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+  const expectedVersion = source.match(/const VERSION = "([^"]+)"/)?.[1];
+  if (!expectedVersion) throw new Error("Unable to determine expected ClientStream version.");
+
+  let health = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      health = await call("/api/health", { method: "GET" });
+      if (health.status === "ok" && health.database === "bound" && health.version === expectedVersion) break;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  if (!health || health.version !== expectedVersion) {
+    throw new Error("Deployed Worker did not reach expected version " + expectedVersion + ".");
+  }
 
   await call("/api/auth/register", {
     method: "POST",
