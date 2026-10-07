@@ -13,10 +13,14 @@ import {
   toBase64,
   validEmail
 } from "./http";
+import { brandedEmail, emailConfigured, sendEmail } from "./email";
 
 const SESSION_COOKIE = "cs_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
 const PASSWORD_ITERATIONS = 120_000;
+const RESET_TOKEN_SECONDS = 60 * 30;
+const VERIFY_TOKEN_SECONDS = 60 * 60 * 24;
+const TOKEN_RESEND_SECONDS = 120;
 
 function sessionCookie(token: string, maxAge = SESSION_SECONDS): string {
   return [
@@ -67,6 +71,64 @@ async function createSession(env: Env, userId: string): Promise<{ token: string;
   return { token, expiresAt };
 }
 
+async function tokenRecentlyIssued(env: Env, userId: string, tokenType: string): Promise<boolean> {
+  const cutoff = new Date(Date.now() - TOKEN_RESEND_SECONDS * 1000).toISOString();
+  const row = await env.DB.prepare(
+    "SELECT token_hash FROM login_tokens WHERE user_id = ? AND token_type = ? AND created_at > ? AND consumed_at IS NULL LIMIT 1"
+  ).bind(userId, tokenType, cutoff).first<{ token_hash: string }>();
+  return Boolean(row);
+}
+
+async function issueToken(
+  env: Env,
+  userId: string,
+  tokenType: "password_reset" | "email_verification",
+  lifetimeSeconds: number
+): Promise<string | null> {
+  if (await tokenRecentlyIssued(env, userId, tokenType)) return null;
+
+  const token = randomToken(32);
+  const tokenHash = await sha256Hex(token);
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + lifetimeSeconds * 1000).toISOString();
+
+  await env.DB.batch([
+    env.DB.prepare(
+      "DELETE FROM login_tokens WHERE user_id = ? AND token_type = ? AND (consumed_at IS NOT NULL OR expires_at <= ?)"
+    ).bind(userId, tokenType, now),
+    env.DB.prepare(
+      "INSERT INTO login_tokens (token_hash, user_id, expires_at, consumed_at, created_at, token_type) VALUES (?, ?, ?, NULL, ?, ?)"
+    ).bind(tokenHash, userId, expiresAt, now, tokenType)
+  ]);
+
+  return token;
+}
+
+async function sendVerificationEmail(
+  env: Env,
+  userId: string,
+  email: string,
+  origin: string
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const token = await issueToken(env, userId, "email_verification", VERIFY_TOKEN_SECONDS);
+  if (!token) return false;
+
+  const url = origin + "/?verify=" + encodeURIComponent(token);
+  await sendEmail(env, {
+    to: email,
+    subject: "Verify your ClientStream email",
+    html: brandedEmail(
+      "Verify your email",
+      "Confirm this email address for your ClientStream account. This verification link expires in 24 hours.",
+      "Verify email",
+      url
+    ),
+    text: "Verify your ClientStream email: " + url
+  });
+  return true;
+}
+
 export async function getAuthContext(request: Request, env: Env): Promise<AuthContext | null> {
   const rawToken = parseCookies(request)[SESSION_COOKIE];
   if (!rawToken || rawToken.length < 32) return null;
@@ -75,8 +137,13 @@ export async function getAuthContext(request: Request, env: Env): Promise<AuthCo
   const now = new Date().toISOString();
 
   const userRow = await env.DB.prepare(
-    "SELECT u.id, u.email, u.display_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? LIMIT 1"
-  ).bind(tokenHash, now).first<{ id: string; email: string; display_name: string | null }>();
+    "SELECT u.id, u.email, u.display_name, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? LIMIT 1"
+  ).bind(tokenHash, now).first<{
+    id: string;
+    email: string;
+    display_name: string | null;
+    email_verified_at: string | null;
+  }>();
 
   if (!userRow) return null;
 
@@ -94,7 +161,8 @@ export async function getAuthContext(request: Request, env: Env): Promise<AuthCo
     user: {
       id: userRow.id,
       email: normaliseEmail(userRow.email),
-      displayName: userRow.display_name
+      displayName: userRow.display_name,
+      emailVerified: Boolean(userRow.email_verified_at)
     },
     business: businessRow
       ? {
@@ -176,11 +244,20 @@ export async function register(request: Request, env: Env): Promise<Response> {
   ]);
 
   const session = await createSession(env, userId);
+  let verificationSent = false;
+  if (emailConfigured(env)) {
+    try {
+      verificationSent = await sendVerificationEmail(env, userId, email, new URL(request.url).origin);
+    } catch (error) {
+      console.error("ClientStream verification email failed", error);
+    }
+  }
 
   return json(
     {
-      user: { id: userId, email, displayName },
-      business: { id: businessId, name: businessName, slug, plan: "free", role: "owner" }
+      user: { id: userId, email, displayName, emailVerified: false },
+      business: { id: businessId, name: businessName, slug, plan: "free", role: "owner" },
+      verificationSent
     },
     {
       status: 201,
@@ -252,4 +329,128 @@ export async function logout(request: Request, env: Env): Promise<Response> {
     { authenticated: false },
     { headers: { "set-cookie": sessionCookie("", 0) } }
   );
+}
+
+export async function requestPasswordReset(request: Request, env: Env): Promise<Response> {
+  if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
+  if (!emailConfigured(env)) {
+    return json({ error: "Password recovery email is not configured yet." }, { status: 503 });
+  }
+
+  const body = await readJson<{ email?: unknown }>(request);
+  const email = typeof body?.email === "string" ? normaliseEmail(body.email) : "";
+
+  if (validEmail(email)) {
+    const user = await env.DB.prepare(
+      "SELECT id FROM users WHERE email = ? COLLATE NOCASE LIMIT 1"
+    ).bind(email).first<{ id: string }>();
+
+    if (user) {
+      const token = await issueToken(env, user.id, "password_reset", RESET_TOKEN_SECONDS);
+      if (token) {
+        const url = new URL(request.url).origin + "/?reset=" + encodeURIComponent(token);
+        try {
+          await sendEmail(env, {
+            to: email,
+            subject: "Reset your ClientStream password",
+            html: brandedEmail(
+              "Reset your password",
+              "Use the button below to choose a new ClientStream password. This link expires in 30 minutes and can only be used once.",
+              "Reset password",
+              url
+            ),
+            text: "Reset your ClientStream password: " + url
+          });
+        } catch (error) {
+          console.error("ClientStream reset email failed", error);
+        }
+      }
+    }
+  }
+
+  return json({
+    accepted: true,
+    message: "If that email belongs to a ClientStream account, a reset link will be sent."
+  }, { status: 202 });
+}
+
+export async function resetPassword(request: Request, env: Env): Promise<Response> {
+  if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
+
+  const body = await readJson<{ token?: unknown; password?: unknown }>(request);
+  const token = typeof body?.token === "string" ? body.token : "";
+  const password = typeof body?.password === "string" ? body.password : "";
+
+  if (token.length < 32) return json({ error: "This reset link is invalid." }, { status: 400 });
+  if (password.length < 10 || password.length > 128) {
+    return json({ error: "Password must be between 10 and 128 characters." }, { status: 400 });
+  }
+
+  const tokenHash = await sha256Hex(token);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    "SELECT user_id FROM login_tokens WHERE token_hash = ? AND token_type = 'password_reset' AND consumed_at IS NULL AND expires_at > ? LIMIT 1"
+  ).bind(tokenHash, now).first<{ user_id: string }>();
+
+  if (!row) return json({ error: "This reset link is invalid or has expired." }, { status: 400 });
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordHash = await derivePassword(password, salt, PASSWORD_ITERATIONS);
+
+  await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE password_credentials SET password_hash = ?, salt = ?, iterations = ?, updated_at = ? WHERE user_id = ?"
+    ).bind(toBase64(passwordHash), toBase64(salt), PASSWORD_ITERATIONS, now, row.user_id),
+    env.DB.prepare(
+      "UPDATE login_tokens SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL"
+    ).bind(now, tokenHash),
+    env.DB.prepare(
+      "DELETE FROM sessions WHERE user_id = ?"
+    ).bind(row.user_id)
+  ]);
+
+  const session = await createSession(env, row.user_id);
+  return json(
+    { reset: true },
+    { headers: { "set-cookie": sessionCookie(session.token) } }
+  );
+}
+
+export async function sendVerification(request: Request, env: Env): Promise<Response> {
+  if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
+  if (!emailConfigured(env)) return json({ error: "Verification email is not configured yet." }, { status: 503 });
+
+  const context = await requireAuth(request, env);
+  if (context instanceof Response) return context;
+  if (context.user.emailVerified) return json({ verified: true, sent: false });
+
+  const sent = await sendVerificationEmail(env, context.user.id, context.user.email, new URL(request.url).origin);
+  return json({ verified: false, sent });
+}
+
+export async function verifyEmail(request: Request, env: Env): Promise<Response> {
+  if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
+
+  const body = await readJson<{ token?: unknown }>(request);
+  const token = typeof body?.token === "string" ? body.token : "";
+  if (token.length < 32) return json({ error: "This verification link is invalid." }, { status: 400 });
+
+  const tokenHash = await sha256Hex(token);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    "SELECT user_id FROM login_tokens WHERE token_hash = ? AND token_type = 'email_verification' AND consumed_at IS NULL AND expires_at > ? LIMIT 1"
+  ).bind(tokenHash, now).first<{ user_id: string }>();
+
+  if (!row) return json({ error: "This verification link is invalid or has expired." }, { status: 400 });
+
+  await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?"
+    ).bind(now, now, row.user_id),
+    env.DB.prepare(
+      "UPDATE login_tokens SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL"
+    ).bind(now, tokenHash)
+  ]);
+
+  return json({ verified: true });
 }
