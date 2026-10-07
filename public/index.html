@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">\n  <meta name="theme-color" content="#1e3a8a">
   <meta name="description" content="ClientStream — simple client, job and invoice management for small business.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'">
-  <title>ClientStream</title>
+  <title>ClientStream</title>\n  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -14,7 +14,10 @@
 
   <section id="auth-view" class="auth-shell">
     <div class="auth-brand">
-      <span class="brand-mark">C</span>
+      <svg class="brand-mark" viewBox="0 0 64 48" aria-hidden="true">
+  <path d="M14 4A12 12 0 0 0 2 16v6a12 12 0 0 0 12 12h6l6 6v-6h6a12 12 0 0 0 12-12v-6A12 12 0 0 0 32 4H14Z" fill="#1e3a8a"/>
+  <path d="M50 4a12 12 0 0 1 12 12v6a12 12 0 0 1-12 12h-6l-6 6v-6h-6a12 12 0 0 1-12-12v-6A12 12 0 0 1 32 4h18Z" fill="#0ea5e9" opacity=".84"/>
+</svg>
       <span>ClientStream</span>
     </div>
     <div class="auth-copy">
@@ -47,7 +50,10 @@
 
   <div id="app-view" class="app hidden">
     <aside class="sidebar">
-      <div class="sidebar-brand"><span class="brand-mark">C</span><span>ClientStream</span></div>
+      <div class="sidebar-brand"><svg class="brand-mark" viewBox="0 0 64 48" aria-hidden="true">
+  <path d="M14 4A12 12 0 0 0 2 16v6a12 12 0 0 0 12 12h6l6 6v-6h6a12 12 0 0 0 12-12v-6A12 12 0 0 0 32 4H14Z" fill="#1e3a8a"/>
+  <path d="M50 4a12 12 0 0 1 12 12v6a12 12 0 0 1-12 12h-6l-6 6v-6h-6a12 12 0 0 1-12-12v-6A12 12 0 0 1 32 4h18Z" fill="#0ea5e9" opacity=".84"/>
+</svg><span>ClientStream</span></div>
       <nav>
         <button class="nav-item active" data-view="dashboard">Overview</button>
         <button class="nav-item" data-view="clients">Clients</button>
