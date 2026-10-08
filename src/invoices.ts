@@ -249,8 +249,20 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
 
   const allowed = new Set(["draft", "sent", "void"]);
   let status = existing.status;
-  if (typeof body.status === "string" && allowed.has(body.status) && existing.status !== "paid") {
+  if (typeof body.status === "string" && allowed.has(body.status)) {
     status = body.status;
+  }
+  // Financially issued, partly paid and paid invoices cannot be reopened as drafts.
+  const legalTransitions: Record<string, string[]> = {
+    draft: ["draft", "sent", "void"],
+    sent: ["sent", "void"],
+    overdue: ["overdue", "void"],
+    part_paid: ["part_paid"],
+    paid: ["paid"],
+    void: ["void"]
+  };
+  if (!legalTransitions[existing.status]?.includes(status)) {
+    return json({ error: "This invoice status change is not permitted.", code: "INVALID_STATUS_TRANSITION" }, { status: 409 });
   }
   if (existing.amount_paid_cents > 0 && status === "void") {
     return json({ error: "An invoice with payments cannot be voided." }, { status: 409 });
