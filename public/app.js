@@ -679,6 +679,28 @@ async function loadSettings() {
   }
 }
 
+$("#change-password-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const currentPassword = String(data.get("currentPassword") || "");
+  const newPassword = String(data.get("newPassword") || "");
+  if (newPassword !== String(data.get("confirmPassword") || "")) {
+    toast("The new passwords do not match.", true);
+    return;
+  }
+  try {
+    await api("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    form.reset();
+    toast("Password changed. Other sessions have been signed out.");
+  } catch (error) {
+    toast(error.message || "Unable to change password.", true);
+  }
+});
+
 $("#settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
