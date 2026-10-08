@@ -352,20 +352,18 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
   const now = new Date().toISOString();
   const paymentId = crypto.randomUUID();
 
-  try {
-    await env.DB.batch([
-      env.DB.prepare(
-        "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) VALUES (?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?)"
-      ).bind(paymentId, business.id, id, amountCents, now, now),
-      env.DB.prepare(
-        "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ?"
-      ).bind(newPaid, status, paid ? now : null, now, id, business.id)
-    ]);
-  } catch (error) {
-    if (String(error).includes("MANUAL_PAYMENT_CONFLICT")) {
-      return json({ error: "Invoice balance changed. Refresh and try again.", code: "PAYMENT_CONFLICT" }, { status: 409 });
-    }
-    throw error;
+  // Compare-and-swap invoice balance inside the same D1 transaction as its
+  // payment ledger entry. Only an UPDATE that changed one row can record payment.
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ? AND amount_paid_cents = ? AND status NOT IN ('paid','void') AND total_cents >= amount_paid_cents + ?"
+    ).bind(newPaid, status, paid ? now : null, now, id, business.id, invoice.amount_paid_cents, amountCents),
+    env.DB.prepare(
+      "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) SELECT ?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ? WHERE changes() = 1"
+    ).bind(paymentId, business.id, id, amountCents, now, now)
+  ]);
+  if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) {
+    return json({ error: "Invoice balance changed. Refresh and try again.", code: "PAYMENT_CONFLICT" }, { status: 409 });
   }
 
   return json({
