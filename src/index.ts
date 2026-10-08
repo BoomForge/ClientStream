@@ -19,6 +19,7 @@ import { smartWrite, smartWriteUsage } from "./smart-write";
 import { deleteAccount, exportAccountData } from "./account";
 import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } from "./security";
 import { runMaintenance } from "./maintenance";
+import { DEPLOY_REVISION } from "./revision";
 
 const VERSION = "0.9.0-launch-hardening";
 
@@ -40,12 +41,19 @@ async function api(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "GET" && path === "/api/health") {
+    // A D1 binding alone does not prove that production queries are succeeding.
+    const dbProbe = await env.DB.prepare("SELECT 1 AS ready").first<{ ready: number }>();
+    if (dbProbe?.ready !== 1) {
+      return json({ status: "degraded", service: "clientstream", databaseReady: false }, { status: 503 });
+    }
     return json({
       status: "ok",
       service: "clientstream",
       version: VERSION,
+      revision: DEPLOY_REVISION,
       environment: env.APP_ENV ?? "unknown",
       database: "bound",
+      databaseReady: true,
       squareWebhook: env.SQUARE_WEBHOOK_SIGNATURE_KEY ? "configured" : "unconfigured",
       squareBilling: env.SQUARE_ACCESS_TOKEN && env.SQUARE_LOCATION_ID && env.SQUARE_PRO_PLAN_VARIATION_ID ? "configured" : "unconfigured",
       transactionalEmail: emailConfigured(env) ? "configured" : "unconfigured",
