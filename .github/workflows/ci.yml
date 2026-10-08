@@ -28,5 +28,97 @@ jobs:
         run: |
           rm -rf .wrangler/state
           npm run db:migrate:local
+      - name: Run local D1 + Worker end-to-end smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-local.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "Local Worker never became ready"
+            tail -n 70 /tmp/clientstream-local.log
+            exit 1
+          fi
+          if ! CLIENTSTREAM_SMOKE_URL=http://127.0.0.1:8794 npm run smoke:production; then
+            tail -n 70 /tmp/clientstream-local.log
+            exit 1
+          fi
+      - name: Validate two-business isolation in local Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-tenants.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-tenant-isolation.mjs; then
+            tail -n 70 /tmp/clientstream-tenants.log
+            exit 1
+          fi
+
+      - name: Validate financial and GST rules in local Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-finance.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-financial-integrity.mjs; then
+            tail -n 70 /tmp/clientstream-finance.log
+            exit 1
+          fi
+
+      - name: Validate authentication and session revocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-auth.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-auth-security.mjs; then
+            tail -n 70 /tmp/clientstream-auth.log
+            exit 1
+          fi
+
+      - name: Verify exact Free plan limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-limits.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-free-limits.mjs; then
+            tail -n 70 /tmp/clientstream-limits.log
+            exit 1
+          fi
+
+      - name: Prove encrypted local backup restore
+        shell: bash
+        run: bash scripts/drill-local-backup.sh
+
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run

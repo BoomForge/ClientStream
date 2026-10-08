@@ -1,3 +1,4 @@
+import { businessToday } from "./local-date";
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
@@ -14,12 +15,12 @@ function paymentInvoiceId(pathname: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function isPastDate(value: string | null): boolean {
-  return Boolean(value && value.slice(0, 10) < new Date().toISOString().slice(0, 10));
+function isPastDate(value: string | null, today: string): boolean {
+  return Boolean(value && value.slice(0, 10) < today);
 }
 
 async function refreshOverdue(env: Env, businessId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await businessToday(env, businessId);
   await env.DB.prepare(
     "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE business_id = ? AND status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
   ).bind(new Date().toISOString(), businessId, today).run();
@@ -116,7 +117,11 @@ export async function createInvoice(request: Request, env: Env): Promise<Respons
   const parsed = parseDocumentItems(body?.items);
   if (!parsed.items) return json({ error: parsed.error }, { status: 400 });
 
-  const taxMode = taxModeFrom(body?.taxMode, await businessGstRegistered(env, business.id));
+  const gstRegistered = await businessGstRegistered(env, business.id);
+  if (body?.taxMode === "gst10" && !gstRegistered) {
+    return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+  }
+  const taxMode = taxModeFrom(body?.taxMode, gstRegistered);
   const totals = documentTotals(parsed.items, taxMode);
   if (totals.totalCents <= 0) return json({ error: "Invoice total must be greater than zero." }, { status: 400 });
 
@@ -229,7 +234,11 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
 
     let taxMode: TaxMode = existing.tax_cents > 0 ? "gst10" : "none";
     if ("taxMode" in body) {
-      taxMode = taxModeFrom(body.taxMode, await businessGstRegistered(env, business.id));
+      const gstRegistered = await businessGstRegistered(env, business.id);
+      if (body.taxMode === "gst10" && !gstRegistered) {
+        return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+      }
+      taxMode = taxModeFrom(body.taxMode, gstRegistered);
     }
 
     const totals = documentTotals(parsed.items, taxMode);
@@ -241,8 +250,20 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
 
   const allowed = new Set(["draft", "sent", "void"]);
   let status = existing.status;
-  if (typeof body.status === "string" && allowed.has(body.status) && existing.status !== "paid") {
+  if (typeof body.status === "string" && allowed.has(body.status)) {
     status = body.status;
+  }
+  // Financially issued, partly paid and paid invoices cannot be reopened as drafts.
+  const legalTransitions: Record<string, string[]> = {
+    draft: ["draft", "sent", "void"],
+    sent: ["sent", "void"],
+    overdue: ["overdue", "void"],
+    part_paid: ["part_paid"],
+    paid: ["paid"],
+    void: ["void"]
+  };
+  if (!legalTransitions[existing.status]?.includes(status)) {
+    return json({ error: "This invoice status change is not permitted.", code: "INVALID_STATUS_TRANSITION" }, { status: 409 });
   }
   if (existing.amount_paid_cents > 0 && status === "void") {
     return json({ error: "An invoice with payments cannot be voided." }, { status: 409 });
@@ -253,7 +274,7 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
   const now = new Date().toISOString();
   const issuedAt = status === "sent" && !existing.issued_at ? now : existing.issued_at;
 
-  if (status === "sent" && isPastDate(dueAt)) status = "overdue";
+  if (status === "sent" && isPastDate(dueAt, await businessToday(env, business.id))) status = "overdue";
 
   const statements = [
     env.DB.prepare(
@@ -327,18 +348,25 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
 
   const newPaid = invoice.amount_paid_cents + amountCents;
   const paid = newPaid >= invoice.total_cents;
-  const status = paid ? "paid" : (isPastDate(invoice.due_at) ? "overdue" : "part_paid");
+  const status = paid ? "paid" : (isPastDate(invoice.due_at, await businessToday(env, business.id)) ? "overdue" : "part_paid");
   const now = new Date().toISOString();
   const paymentId = crypto.randomUUID();
 
-  await env.DB.batch([
-    env.DB.prepare(
-      "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) VALUES (?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?)"
-    ).bind(paymentId, business.id, id, amountCents, now, now),
-    env.DB.prepare(
-      "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ?"
-    ).bind(newPaid, status, paid ? now : null, now, id, business.id)
-  ]);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) VALUES (?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?)"
+      ).bind(paymentId, business.id, id, amountCents, now, now),
+      env.DB.prepare(
+        "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ?"
+      ).bind(newPaid, status, paid ? now : null, now, id, business.id)
+    ]);
+  } catch (error) {
+    if (String(error).includes("MANUAL_PAYMENT_CONFLICT")) {
+      return json({ error: "Invoice balance changed. Refresh and try again.", code: "PAYMENT_CONFLICT" }, { status: 409 });
+    }
+    throw error;
+  }
 
   return json({
     payment: { id: paymentId, invoice_id: id, amount_cents: amountCents, paid_at: now },

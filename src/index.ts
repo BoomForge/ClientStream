@@ -1,6 +1,6 @@
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
-import { getAuthContext, login, logout, register, requestPasswordReset, resetPassword, sendVerification, verifyEmail } from "./auth";
+import { getAuthContext, login, logout, changePassword, register, requestPasswordReset, resetPassword, sendVerification, verifyEmail } from "./auth";
 import { json } from "./http";
 import { dashboard } from "./dashboard";
 import { archiveClient, createClient, listClients, updateClient } from "./clients";
@@ -20,7 +20,7 @@ import { deleteAccount, exportAccountData } from "./account";
 import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } from "./security";
 import { runMaintenance } from "./maintenance";
 
-const VERSION = "0.8.2-native-pbkdf2";
+const VERSION = "0.9.0-launch-hardening";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -62,6 +62,7 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (request.method === "POST" && path === "/api/auth/register") return register(request, env);
   if (request.method === "POST" && path === "/api/auth/login") return login(request, env);
   if (request.method === "POST" && path === "/api/auth/logout") return logout(request, env);
+  if (request.method === "POST" && path === "/api/auth/change-password") return changePassword(request, env);
   if (request.method === "POST" && path === "/api/auth/request-reset") return requestPasswordReset(request, env);
   if (request.method === "POST" && path === "/api/auth/reset-password") return resetPassword(request, env);
   if (request.method === "POST" && path === "/api/auth/send-verification") return sendVerification(request, env);

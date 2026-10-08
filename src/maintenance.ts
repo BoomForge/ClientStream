@@ -1,12 +1,6 @@
+import { calendarDateInZone } from "./local-date";
 import type { Env } from "./types";
 import { brandedEmail, emailConfigured, sendEmail } from "./email";
-
-function weekStart(value = new Date()): string {
-  const date = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() - day + 1);
-  return date.toISOString().slice(0, 10);
-}
 
 function reminderPayload(title: string, note: string): string {
   return JSON.stringify({ title, note });
@@ -28,26 +22,31 @@ async function cleanupExpiredSecurityRecords(env: Env, now: string): Promise<voi
 }
 
 async function refreshDocumentStates(env: Env, now: string): Promise<void> {
-  const today = now.slice(0, 10);
-  await env.DB.batch([
-    env.DB.prepare(
-      "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
-    ).bind(now, today),
-    env.DB.prepare(
-      "UPDATE quotes SET status = 'expired', updated_at = ? WHERE status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
-    ).bind(now, today)
-  ]);
+  // A UTC date rolls over in the middle of the business day in Australia.
+  const zones = await env.DB.prepare("SELECT DISTINCT timezone FROM businesses").all<{ timezone: string }>();
+  const statements: D1PreparedStatement[] = [];
+  for (const zone of zones.results ?? []) {
+    const localToday = calendarDateInZone(new Date(now), zone.timezone);
+    statements.push(
+      env.DB.prepare(
+        "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE business_id IN (SELECT id FROM businesses WHERE timezone = ?) AND status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
+      ).bind(now, zone.timezone, localToday),
+      env.DB.prepare(
+        "UPDATE quotes SET status = 'expired', updated_at = ? WHERE business_id IN (SELECT id FROM businesses WHERE timezone = ?) AND status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
+      ).bind(now, zone.timezone, localToday)
+    );
+  }
+  if (statements.length) await env.DB.batch(statements);
 }
 
 async function createAutomaticReminders(env: Env, now: string): Promise<void> {
   const today = now.slice(0, 10);
-  const week = weekStart(new Date(now));
   const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const reviewFrom = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const reviewTo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
 
   const overdue = await env.DB.prepare(
-    "SELECT i.id, i.business_id, i.client_id, i.number, i.due_at, i.total_cents, i.amount_paid_cents, c.name AS client_name FROM invoices i JOIN clients c ON c.id = i.client_id WHERE i.status = 'overdue' AND i.amount_paid_cents < i.total_cents LIMIT 200"
+    "SELECT i.id, i.business_id, i.client_id, i.number, i.due_at, i.total_cents, i.amount_paid_cents, c.name AS client_name FROM invoices i JOIN clients c ON c.id = i.client_id WHERE i.status = 'overdue' AND i.amount_paid_cents < i.total_cents AND NOT EXISTS (SELECT 1 FROM reminders r WHERE r.dedupe_key = 'overdue:' || i.id) LIMIT 200"
   ).all<{
     id: string;
     business_id: string;
@@ -60,7 +59,7 @@ async function createAutomaticReminders(env: Env, now: string): Promise<void> {
   }>();
 
   const upcomingJobs = await env.DB.prepare(
-    "SELECT j.id, j.business_id, j.client_id, j.title, j.scheduled_for, c.name AS client_name FROM jobs j LEFT JOIN clients c ON c.id = j.client_id WHERE j.status IN ('planned','active') AND j.scheduled_for > ? AND j.scheduled_for <= ? LIMIT 200"
+    "SELECT j.id, j.business_id, j.client_id, j.title, j.scheduled_for, c.name AS client_name FROM jobs j LEFT JOIN clients c ON c.id = j.client_id WHERE j.status IN ('planned','active') AND j.scheduled_for > ? AND j.scheduled_for <= ? AND NOT EXISTS (SELECT 1 FROM reminders r WHERE r.dedupe_key = 'job:' || j.id || ':' || substr(j.scheduled_for,1,10)) LIMIT 200"
   ).bind(now, in24Hours).all<{
     id: string;
     business_id: string;
@@ -71,7 +70,7 @@ async function createAutomaticReminders(env: Env, now: string): Promise<void> {
   }>();
 
   const reviewJobs = await env.DB.prepare(
-    "SELECT j.id, j.business_id, j.client_id, j.title, j.completed_at, c.name AS client_name FROM jobs j JOIN businesses b ON b.id = j.business_id LEFT JOIN clients c ON c.id = j.client_id WHERE j.status = 'completed' AND j.completed_at >= ? AND j.completed_at <= ? AND b.google_review_url IS NOT NULL LIMIT 200"
+    "SELECT j.id, j.business_id, j.client_id, j.title, j.completed_at, c.name AS client_name FROM jobs j JOIN businesses b ON b.id = j.business_id LEFT JOIN clients c ON c.id = j.client_id WHERE j.status = 'completed' AND j.completed_at >= ? AND j.completed_at <= ? AND b.google_review_url IS NOT NULL AND TRIM(b.google_review_url) != '' AND NOT EXISTS (SELECT 1 FROM reminders r WHERE r.dedupe_key = 'review:' || j.id) LIMIT 200"
   ).bind(reviewFrom, reviewTo).all<{
     id: string;
     business_id: string;
@@ -99,7 +98,7 @@ async function createAutomaticReminders(env: Env, now: string): Promise<void> {
           invoice.client_name + " has " + (outstanding / 100).toFixed(2) + " AUD outstanding" + (invoice.due_at ? " (due " + invoice.due_at.slice(0, 10) + ")" : "") + "."
         ),
         now,
-        "overdue:" + invoice.id + ":" + week
+        "overdue:" + invoice.id
       )
     );
   }
@@ -152,7 +151,7 @@ async function emailDueReminders(env: Env, now: string): Promise<void> {
   if (!emailConfigured(env)) return;
 
   const result = await env.DB.prepare(
-    "SELECT r.id, r.payload_json, r.kind, r.scheduled_for, u.email, u.email_verified_at, b.name AS business_name FROM reminders r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = b.owner_user_id WHERE r.status = 'pending' AND r.scheduled_for <= ? AND r.notified_at IS NULL ORDER BY r.scheduled_for ASC LIMIT 50"
+    "SELECT r.id, r.payload_json, r.kind, r.scheduled_for, u.email, u.email_verified_at, b.name AS business_name FROM reminders r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = b.owner_user_id WHERE b.owner_reminder_email_enabled = 1 AND r.status = 'pending' AND r.scheduled_for <= ? AND r.notified_at IS NULL ORDER BY r.scheduled_for ASC LIMIT 50"
   ).bind(now).all<{
     id: string;
     payload_json: string | null;

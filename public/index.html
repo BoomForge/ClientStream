@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">\n  <meta name="theme-color" content="#1e3a8a">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#1e3a8a">
   <meta name="description" content="ClientStream — simple client, job and invoice management for small business.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'">
-  <title>ClientStream</title>\n  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>ClientStream</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -127,7 +129,7 @@
             <div><p class="eyebrow">CUSTOMERS</p><h3>Clients</h3></div>
             <button class="primary small" id="add-client">Add client</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th></th></tr></thead><tbody id="clients-body"></tbody></table></div>
+          <div class="two-col"><label>Search clients<input id="clients-search" type="search" placeholder="Search records" autocomplete="off"></label><label>Status<select id="clients-status"><option value="">All clients</option><option value="active">Active</option><option value="archived">Archived</option></select></label></div><label>Sort<select id="clients-sort"><option value="recent">Most recent</option><option value="name">Name / number</option></select></label><div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th></th></tr></thead><tbody id="clients-body"></tbody></table></div>
           <div class="empty hidden" id="clients-empty">No clients yet. Add your first client to get started.</div>
         </div>
       </section>
@@ -138,7 +140,7 @@
             <div><p class="eyebrow">WORK</p><h3>Jobs</h3></div>
             <button class="primary small" id="add-job">Add job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Scheduled</th><th>Status</th><th></th></tr></thead><tbody id="jobs-body"></tbody></table></div>
+          <div class="two-col"><label>Search jobs<input id="jobs-search" type="search" placeholder="Search records" autocomplete="off"></label><label>Status<select id="jobs-status"><option value="">All jobs</option><option value="planned">Planned</option><option value="active">Active</option><option value="completed">Completed</option></select></label></div><label>Sort<select id="jobs-sort"><option value="recent">Most recent</option><option value="name">Name / number</option></select></label><div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Scheduled</th><th>Status</th><th></th></tr></thead><tbody id="jobs-body"></tbody></table></div>
           <div class="empty hidden" id="jobs-empty">No jobs yet.</div>
         </div>
       </section>
@@ -149,7 +151,7 @@
             <div><p class="eyebrow">ESTIMATES</p><h3>Quotes</h3></div>
             <button class="primary small" id="add-quote">Create quote</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Quote</th><th>Client</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="quotes-body"></tbody></table></div>
+          <div class="two-col"><label>Search quotes<input id="quotes-search" type="search" placeholder="Search records" autocomplete="off"></label><label>Status<select id="quotes-status"><option value="">All quotes</option><option value="draft">Draft</option><option value="sent">Sent</option><option value="expired">Expired</option></select></label></div><label>Sort<select id="quotes-sort"><option value="recent">Most recent</option><option value="name">Name / number</option></select></label><div class="table-wrap"><table><thead><tr><th>Quote</th><th>Client</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="quotes-body"></tbody></table></div>
           <div class="empty hidden" id="quotes-empty">No quotes yet.</div>
         </div>
       </section>
@@ -160,7 +162,7 @@
             <div><p class="eyebrow">MONEY IN</p><h3>Invoices</h3></div>
             <button class="primary small" id="add-invoice">Create invoice</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Outstanding</th><th>Status</th><th></th></tr></thead><tbody id="invoices-body"></tbody></table></div>
+          <div class="two-col"><label>Search invoices<input id="invoices-search" type="search" placeholder="Search records" autocomplete="off"></label><label>Status<select id="invoices-status"><option value="">All invoices</option><option value="draft">Draft</option><option value="sent">Sent</option><option value="overdue">Overdue</option><option value="paid">Paid</option></select></label></div><label>Sort<select id="invoices-sort"><option value="recent">Most recent</option><option value="name">Name / number</option></select></label><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Outstanding</th><th>Status</th><th></th></tr></thead><tbody id="invoices-body"></tbody></table></div>
           <div class="empty hidden" id="invoices-empty">No invoices yet.</div>
         </div>
       </section>
@@ -239,6 +241,20 @@
             <p class="hint">The review link is used automatically by Smart Write when you create a review request.</p>
             <div><button class="primary" type="submit">Save business profile</button></div>
           </form>
+          <div class="account-tools">
+            <div><h4>Change password</h4><p>Update your sign-in password and sign out other devices.</p></div>
+            <form id="change-password-form" class="settings-form">
+              <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+              <label>New password<input name="newPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+              <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+              <div><button class="primary" type="submit">Change password</button></div>
+            </form>
+          </div>
+          <div class="account-tools">
+            <div><h4>Email notifications</h4><p>In-app reminders always work. Choose whether ClientStream also emails the account owner when reminders are due.</p></div>
+            <label class="check-row"><input id="owner-reminder-email-enabled" type="checkbox"> <span>Email me about due reminders (off by default)</span></label>
+            <p class="hint">Changes are saved with your business profile.</p>
+          </div>
           <div class="account-tools">
             <div>
               <h4>Your data</h4>

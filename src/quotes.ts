@@ -1,3 +1,4 @@
+import { businessToday } from "./local-date";
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
@@ -22,7 +23,7 @@ async function businessGstRegistered(env: Env, businessId: string): Promise<bool
 }
 
 async function refreshExpired(env: Env, businessId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await businessToday(env, businessId);
   await env.DB.prepare(
     "UPDATE quotes SET status = 'expired', updated_at = ? WHERE business_id = ? AND status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
   ).bind(new Date().toISOString(), businessId, today).run();
@@ -94,7 +95,11 @@ export async function createQuote(request: Request, env: Env): Promise<Response>
   const parsed = parseDocumentItems(body?.items);
   if (!parsed.items) return json({ error: parsed.error }, { status: 400 });
 
-  const taxMode = taxModeFrom(body?.taxMode, await businessGstRegistered(env, business.id));
+  const gstRegistered = await businessGstRegistered(env, business.id);
+  if (body?.taxMode === "gst10" && !gstRegistered) {
+    return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+  }
+  const taxMode = taxModeFrom(body?.taxMode, gstRegistered);
   const totals = documentTotals(parsed.items, taxMode);
   if (totals.totalCents <= 0) return json({ error: "Quote total must be greater than zero." }, { status: 400 });
 
@@ -206,7 +211,11 @@ export async function updateQuote(request: Request, env: Env): Promise<Response>
 
     let taxMode: TaxMode = existing.tax_cents > 0 ? "gst10" : "none";
     if ("taxMode" in body) {
-      taxMode = taxModeFrom(body.taxMode, await businessGstRegistered(env, business.id));
+      const gstRegistered = await businessGstRegistered(env, business.id);
+      if (body.taxMode === "gst10" && !gstRegistered) {
+        return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+      }
+      taxMode = taxModeFrom(body.taxMode, gstRegistered);
     }
 
     const totals = documentTotals(parsed.items, taxMode);
@@ -218,6 +227,17 @@ export async function updateQuote(request: Request, env: Env): Promise<Response>
 
   const allowed = new Set(["draft", "sent", "accepted", "declined", "expired"]);
   const status = typeof body.status === "string" && allowed.has(body.status) ? body.status : existing.status;
+  // Issued or accepted documents must never be returned to draft.
+  const legalTransitions: Record<string, string[]> = {
+    draft: ["draft", "sent", "declined"],
+    sent: ["sent", "accepted", "declined", "expired"],
+    accepted: ["accepted"],
+    declined: ["declined"],
+    expired: ["expired"]
+  };
+  if (!legalTransitions[existing.status]?.includes(status)) {
+    return json({ error: "This quote status change is not permitted.", code: "INVALID_STATUS_TRANSITION" }, { status: 409 });
+  }
   const expiresAt = "expiresAt" in body ? textValue(body.expiresAt, 40) : existing.expires_at;
   const notes = "notes" in body ? textValue(body.notes, 5000) : existing.notes;
   const now = new Date().toISOString();

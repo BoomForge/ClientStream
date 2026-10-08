@@ -19,7 +19,7 @@ export async function getSettings(request: Request, env: Env): Promise<Response>
   if (business instanceof Response) return business;
 
   const row = await env.DB.prepare(
-    "SELECT name, business_email, business_phone, business_address, abn, google_review_url, timezone, currency, gst_registered, default_tax_rate_bps FROM businesses WHERE id = ? LIMIT 1"
+    "SELECT name, business_email, business_phone, business_address, abn, google_review_url, timezone, currency, gst_registered, default_tax_rate_bps, owner_reminder_email_enabled FROM businesses WHERE id = ? LIMIT 1"
   ).bind(business.id).first();
 
   return json({ settings: row ?? null });
@@ -44,11 +44,12 @@ export async function updateSettings(request: Request, env: Env): Promise<Respon
     abn?: unknown;
     googleReviewUrl?: unknown;
     gstRegistered?: unknown;
+    ownerReminderEmailEnabled?: unknown;
   }>(request);
   if (!body) return json({ error: "JSON body required." }, { status: 400 });
 
   const current = await env.DB.prepare(
-    "SELECT name, business_email, business_phone, business_address, abn, google_review_url, gst_registered FROM businesses WHERE id = ? LIMIT 1"
+    "SELECT name, business_email, business_phone, business_address, abn, google_review_url, gst_registered, owner_reminder_email_enabled FROM businesses WHERE id = ? LIMIT 1"
   ).bind(business.id).first<{
     name: string;
     business_email: string | null;
@@ -57,6 +58,7 @@ export async function updateSettings(request: Request, env: Env): Promise<Respon
     abn: string | null;
     google_review_url: string | null;
     gst_registered: number;
+    owner_reminder_email_enabled: number;
   }>();
   if (!current) return json({ error: "Business not found." }, { status: 404 });
 
@@ -79,10 +81,13 @@ export async function updateSettings(request: Request, env: Env): Promise<Respon
     return json({ error: "Google review link must be a valid web address." }, { status: 400 });
   }
 
+  const reminderEmails = "ownerReminderEmailEnabled" in body
+    ? body.ownerReminderEmailEnabled === true
+    : Boolean(current.owner_reminder_email_enabled);
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "UPDATE businesses SET name = ?, business_email = ?, business_phone = ?, business_address = ?, abn = ?, google_review_url = ?, gst_registered = ?, updated_at = ? WHERE id = ?"
-  ).bind(name, businessEmail, businessPhone, businessAddress, abn, googleReviewUrl, gstRegistered ? 1 : 0, now, business.id).run();
+    "UPDATE businesses SET name = ?, business_email = ?, business_phone = ?, business_address = ?, abn = ?, google_review_url = ?, gst_registered = ?, owner_reminder_email_enabled = ?, updated_at = ? WHERE id = ?"
+  ).bind(name, businessEmail, businessPhone, businessAddress, abn, googleReviewUrl, gstRegistered ? 1 : 0, reminderEmails ? 1 : 0, now, business.id).run();
 
   return json({
     settings: {
@@ -92,7 +97,8 @@ export async function updateSettings(request: Request, env: Env): Promise<Respon
       business_address: businessAddress,
       abn,
       google_review_url: googleReviewUrl,
-      gst_registered: gstRegistered ? 1 : 0
+      gst_registered: gstRegistered ? 1 : 0,
+      owner_reminder_email_enabled: reminderEmails ? 1 : 0
     }
   });
 }
