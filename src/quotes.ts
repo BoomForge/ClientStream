@@ -1,3 +1,4 @@
+import { businessToday } from "./local-date";
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
@@ -22,7 +23,7 @@ async function businessGstRegistered(env: Env, businessId: string): Promise<bool
 }
 
 async function refreshExpired(env: Env, businessId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await businessToday(env, businessId);
   await env.DB.prepare(
     "UPDATE quotes SET status = 'expired', updated_at = ? WHERE business_id = ? AND status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
   ).bind(new Date().toISOString(), businessId, today).run();
