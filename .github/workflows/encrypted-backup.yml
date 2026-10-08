@@ -28,7 +28,8 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Encrypted backup skipped until BACKUP_ENCRYPTION_PASSWORD is configured."
+            echo "::error::Encrypted D1 backup FAILED: Cloudflare credentials or BACKUP_ENCRYPTION_PASSWORD are missing. Set the repository secret; keep an owner-accessible recovery copy outside GitHub."
+            exit 1
           fi
       - if: steps.ready.outputs.ready == 'true'
         run: npm install

@@ -72,7 +72,7 @@ The Worker also has:
 - expired session/token cleanup
 - optional reminder email delivery
 
-A weekly encrypted D1 export workflow is present but remains safely inactive until `BACKUP_ENCRYPTION_PASSWORD` is configured. Plaintext database exports are never uploaded as artifacts.
+A weekly encrypted D1 export workflow is present. It **fails visibly** (rather than reporting success) if its Cloudflare credentials or `BACKUP_ENCRYPTION_PASSWORD` are missing. Plaintext database exports are never uploaded as artifacts. A backup is not considered operational until a real production export and isolated restore have passed.
 
 ## Production setup
 
