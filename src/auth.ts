@@ -18,7 +18,9 @@ import { brandedEmail, emailConfigured, sendEmail } from "./email";
 
 const SESSION_COOKIE = "cs_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
-const PASSWORD_ITERATIONS = 120_000;
+// The live Cloudflare PBKDF2 implementation rejects iteration counts above 100,000.
+// Keep per-row counts for backward-compatible verification and upgrade-on-login.
+const PASSWORD_ITERATIONS = 100_000;
 const RESET_TOKEN_SECONDS = 60 * 30;
 const VERIFY_TOKEN_SECONDS = 60 * 60 * 24;
 const TOKEN_RESEND_SECONDS = 120;
