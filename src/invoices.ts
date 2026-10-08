@@ -352,14 +352,21 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
   const now = new Date().toISOString();
   const paymentId = crypto.randomUUID();
 
-  await env.DB.batch([
-    env.DB.prepare(
-      "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) VALUES (?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?)"
-    ).bind(paymentId, business.id, id, amountCents, now, now),
-    env.DB.prepare(
-      "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ?"
-    ).bind(newPaid, status, paid ? now : null, now, id, business.id)
-  ]);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) VALUES (?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?)"
+      ).bind(paymentId, business.id, id, amountCents, now, now),
+      env.DB.prepare(
+        "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ?"
+      ).bind(newPaid, status, paid ? now : null, now, id, business.id)
+    ]);
+  } catch (error) {
+    if (String(error).includes("MANUAL_PAYMENT_CONFLICT")) {
+      return json({ error: "Invoice balance changed. Refresh and try again.", code: "PAYMENT_CONFLICT" }, { status: 409 });
+    }
+    throw error;
+  }
 
   return json({
     payment: { id: paymentId, invoice_id: id, amount_cents: amountCents, paid_at: now },
