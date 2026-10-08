@@ -1,3 +1,4 @@
+import { pbkdf2 } from "node:crypto";
 import type { AuthContext, BusinessContext, Env, PlanId } from "./types";
 import {
   constantTimeEqual,
@@ -38,24 +39,13 @@ async function derivePassword(
   salt: Uint8Array,
   iterations: number
 ): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      salt: salt as unknown as BufferSource,
-      iterations
-    },
-    key,
-    256
-  );
-  return new Uint8Array(bits);
+  // Preserve the existing PBKDF2-SHA256 format (32-byte key, stored salt and iterations).
+  return new Promise<Uint8Array>((resolve, reject) => {
+    pbkdf2(password, salt, iterations, 32, "sha256", (error, derivedKey) => {
+      if (error) reject(error);
+      else resolve(new Uint8Array(derivedKey));
+    });
+  });
 }
 
 export async function verifyUserPassword(env: Env, userId: string, password: string): Promise<boolean> {
