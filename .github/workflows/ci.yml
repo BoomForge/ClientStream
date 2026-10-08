@@ -84,6 +84,22 @@ jobs:
             exit 1
           fi
 
+      - name: Verify exact Free plan limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-limits.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-free-limits.mjs; then
+            tail -n 70 /tmp/clientstream-limits.log
+            exit 1
+          fi
+
       - name: Prove encrypted local backup restore
         shell: bash
         run: bash scripts/drill-local-backup.sh
