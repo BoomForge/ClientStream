@@ -116,7 +116,11 @@ export async function createInvoice(request: Request, env: Env): Promise<Respons
   const parsed = parseDocumentItems(body?.items);
   if (!parsed.items) return json({ error: parsed.error }, { status: 400 });
 
-  const taxMode = taxModeFrom(body?.taxMode, await businessGstRegistered(env, business.id));
+  const gstRegistered = await businessGstRegistered(env, business.id);
+  if (body?.taxMode === "gst10" && !gstRegistered) {
+    return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+  }
+  const taxMode = taxModeFrom(body?.taxMode, gstRegistered);
   const totals = documentTotals(parsed.items, taxMode);
   if (totals.totalCents <= 0) return json({ error: "Invoice total must be greater than zero." }, { status: 400 });
 
@@ -229,7 +233,11 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
 
     let taxMode: TaxMode = existing.tax_cents > 0 ? "gst10" : "none";
     if ("taxMode" in body) {
-      taxMode = taxModeFrom(body.taxMode, await businessGstRegistered(env, business.id));
+      const gstRegistered = await businessGstRegistered(env, business.id);
+      if (body.taxMode === "gst10" && !gstRegistered) {
+        return json({ error: "Enable GST registration in Settings before adding GST.", code: "GST_REGISTRATION_REQUIRED" }, { status: 400 });
+      }
+      taxMode = taxModeFrom(body.taxMode, gstRegistered);
     }
 
     const totals = documentTotals(parsed.items, taxMode);
