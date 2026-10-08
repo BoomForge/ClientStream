@@ -89,6 +89,11 @@ try {
   const clientId = clientResult.client?.id;
   if (!clientId) throw new Error("Client creation failed.");
 
+  await call("/api/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ gstRegistered: true })
+  });
+
   const quoteResult = await call("/api/quotes", {
     method: "POST",
     body: JSON.stringify({
