@@ -228,6 +228,7 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
   if (context instanceof Response) return context;
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
+  if (!context.user.emailVerified) return json({ error: "Verify your email before upgrading your plan.", code: "EMAIL_VERIFICATION_REQUIRED" }, { status: 403 });
   const config = getConfig(env);
 
   if (!config) return json({ error: "Square billing is not configured yet.", code: "BILLING_NOT_CONFIGURED" }, { status: 503 });
