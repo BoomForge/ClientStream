@@ -1,3 +1,4 @@
+import { calendarDateInZone } from "./local-date";
 import type { Env } from "./types";
 import { brandedEmail, emailConfigured, sendEmail } from "./email";
 
@@ -21,15 +22,21 @@ async function cleanupExpiredSecurityRecords(env: Env, now: string): Promise<voi
 }
 
 async function refreshDocumentStates(env: Env, now: string): Promise<void> {
-  const today = now.slice(0, 10);
-  await env.DB.batch([
-    env.DB.prepare(
-      "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
-    ).bind(now, today),
-    env.DB.prepare(
-      "UPDATE quotes SET status = 'expired', updated_at = ? WHERE status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
-    ).bind(now, today)
-  ]);
+  // A UTC date rolls over in the middle of the business day in Australia.
+  const zones = await env.DB.prepare("SELECT DISTINCT timezone FROM businesses").all<{ timezone: string }>();
+  const statements: D1PreparedStatement[] = [];
+  for (const zone of zones.results ?? []) {
+    const localToday = calendarDateInZone(new Date(now), zone.timezone);
+    statements.push(
+      env.DB.prepare(
+        "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE business_id IN (SELECT id FROM businesses WHERE timezone = ?) AND status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
+      ).bind(now, zone.timezone, localToday),
+      env.DB.prepare(
+        "UPDATE quotes SET status = 'expired', updated_at = ? WHERE business_id IN (SELECT id FROM businesses WHERE timezone = ?) AND status = 'sent' AND expires_at IS NOT NULL AND substr(expires_at,1,10) < ?"
+      ).bind(now, zone.timezone, localToday)
+    );
+  }
+  if (statements.length) await env.DB.batch(statements);
 }
 
 async function createAutomaticReminders(env: Env, now: string): Promise<void> {
