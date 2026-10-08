@@ -61,7 +61,31 @@ export async function verifyUserPassword(env: Env, userId: string, password: str
   if (!salt || !expected) return false;
 
   const actual = await derivePassword(password, salt, row.iterations);
-  return constantTimeEqual(actual, expected);
+  if (!constantTimeEqual(actual, expected)) return false;
+  await upgradePasswordHash(env, userId, password, row);
+  return true;
+}
+
+// Upgrade only older credentials after successful authentication. The stored iteration
+// count remains authoritative for verification; existing credentials stay compatible.
+async function upgradePasswordHash(
+  env: Env,
+  userId: string,
+  password: string,
+  row: { password_hash: string; salt: string; iterations: number }
+): Promise<void> {
+  if (row.iterations >= PASSWORD_ITERATIONS) return;
+  try {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const hash = await derivePassword(password, salt, PASSWORD_ITERATIONS);
+    await env.DB.prepare(
+      "UPDATE password_credentials SET password_hash = ?, salt = ?, iterations = ?, updated_at = ? WHERE user_id = ? AND password_hash = ? AND iterations = ?"
+    ).bind(toBase64(hash), toBase64(salt), PASSWORD_ITERATIONS, new Date().toISOString(),
+      userId, row.password_hash, row.iterations).run();
+  } catch (error) {
+    // A transient upgrade failure must not lock out a user with valid credentials.
+    console.error("ClientStream password hash upgrade failed", error);
+  }
 }
 
 async function createSession(env: Env, userId: string): Promise<{ token: string; expiresAt: string }> {
@@ -349,6 +373,7 @@ export async function login(request: Request, env: Env): Promise<Response> {
   if (!constantTimeEqual(actual, expected)) {
     return json({ error: "Invalid email or password." }, { status: 401 });
   }
+  await upgradePasswordHash(env, row.id, password, row);
 
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?")
     .bind(row.id, new Date().toISOString())
@@ -359,6 +384,37 @@ export async function login(request: Request, env: Env): Promise<Response> {
     { authenticated: true },
     { headers: { "set-cookie": sessionCookie(session.token) } }
   );
+}
+
+export async function changePassword(request: Request, env: Env): Promise<Response> {
+  if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
+  const context = await requireAuth(request, env);
+  if (context instanceof Response) return context;
+  const body = await readJson<{ currentPassword?: unknown; newPassword?: unknown }>(request);
+  const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : "";
+  const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
+  if (newPassword.length < 10 || newPassword.length > 128)
+    return json({ error: "New password must be between 10 and 128 characters." }, { status: 400 });
+  if (!await verifyUserPassword(env, context.user.id, currentPassword))
+    return json({ error: "Current password is incorrect." }, { status: 401 });
+  if (currentPassword === newPassword)
+    return json({ error: "Choose a different password." }, { status: 400 });
+
+  const currentSession = parseCookies(request)[SESSION_COOKIE];
+  if (!currentSession) return json({ error: "Sign in again and retry." }, { status: 401 });
+  const tokenHash = await sha256Hex(currentSession);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await derivePassword(newPassword, salt, PASSWORD_ITERATIONS);
+  await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE password_credentials SET password_hash = ?, salt = ?, iterations = ?, updated_at = ? WHERE user_id = ?"
+    ).bind(toBase64(hash), toBase64(salt), PASSWORD_ITERATIONS, new Date().toISOString(), context.user.id),
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?")
+      .bind(context.user.id, tokenHash),
+    env.DB.prepare("DELETE FROM login_tokens WHERE user_id = ? AND token_type = 'password_reset'")
+      .bind(context.user.id)
+  ]);
+  return json({ changed: true, otherSessionsRevoked: true });
 }
 
 export async function logout(request: Request, env: Env): Promise<Response> {
