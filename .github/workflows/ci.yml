@@ -22,6 +22,8 @@ jobs:
         run: npm install
       - name: Type check
         run: npm run check
+      - name: Confirm Worker-native PBKDF2 matches stored credentials
+        run: npm run check:password-crypto
       - name: Check browser and smoke-test JavaScript syntax
         run: npm run check:js
       - name: Validate D1 migrations on a fresh local database
