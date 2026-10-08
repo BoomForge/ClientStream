@@ -10,7 +10,8 @@
     "db:migrate:local": "wrangler d1 migrations apply clientstream-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply clientstream-db --remote",
     "check:js": "node --check public/app.js && node --check public/print.js && node --check scripts/smoke-production.mjs",
-    "smoke:production": "node scripts/smoke-production.mjs"
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "check:password-crypto": "node --experimental-strip-types scripts/test-password-crypto.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

@@ -1,4 +1,4 @@
-import { pbkdf2 } from "node:crypto";
+import { derivePassword } from "./password-crypto";
 import type { AuthContext, BusinessContext, Env, PlanId } from "./types";
 import {
   constantTimeEqual,
@@ -32,20 +32,6 @@ function sessionCookie(token: string, maxAge = SESSION_SECONDS): string {
     "SameSite=Lax",
     "Max-Age=" + maxAge
   ].join("; ");
-}
-
-async function derivePassword(
-  password: string,
-  salt: Uint8Array,
-  iterations: number
-): Promise<Uint8Array> {
-  // Preserve the existing PBKDF2-SHA256 format (32-byte key, stored salt and iterations).
-  return new Promise<Uint8Array>((resolve, reject) => {
-    pbkdf2(password, salt, iterations, 32, "sha256", (error, derivedKey) => {
-      if (error) reject(error);
-      else resolve(new Uint8Array(derivedKey));
-    });
-  });
 }
 
 export async function verifyUserPassword(env: Env, userId: string, password: string): Promise<boolean> {
