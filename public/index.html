@@ -240,6 +240,15 @@
             <div><button class="primary" type="submit">Save business profile</button></div>
           </form>
           <div class="account-tools">
+            <div><h4>Change password</h4><p>Update your sign-in password and sign out other devices.</p></div>
+            <form id="change-password-form" class="settings-form">
+              <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+              <label>New password<input name="newPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+              <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+              <div><button class="primary" type="submit">Change password</button></div>
+            </form>
+          </div>
+          <div class="account-tools">
             <div><h4>Email notifications</h4><p>In-app reminders always work. Choose whether ClientStream also emails the account owner when reminders are due.</p></div>
             <label class="check-row"><input id="owner-reminder-email-enabled" type="checkbox"> <span>Email me about due reminders (off by default)</span></label>
             <p class="hint">Changes are saved with your business profile.</p>
