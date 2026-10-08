@@ -26,7 +26,9 @@ interface BillingConfig {
 }
 
 function getConfig(env: Env): BillingConfig | null {
-  if (!env.SQUARE_ACCESS_TOKEN || !env.SQUARE_LOCATION_ID || !env.SQUARE_PRO_PLAN_VARIATION_ID) {
+  // Never fall back to live Square if the environment secret is omitted.
+  if (!env.SQUARE_ACCESS_TOKEN || !env.SQUARE_LOCATION_ID || !env.SQUARE_PRO_PLAN_VARIATION_ID ||
+      !["sandbox", "production"].includes(env.SQUARE_ENVIRONMENT ?? "")) {
     return null;
   }
   return {
@@ -154,7 +156,7 @@ async function findBusinessForCustomer(env: Env, customerId: string): Promise<st
   if (!email) return null;
 
   const match = await env.DB.prepare(
-    "SELECT b.id FROM users u JOIN memberships m ON m.user_id = u.id JOIN businesses b ON b.id = m.business_id WHERE u.email = ? COLLATE NOCASE ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END LIMIT 1"
+    "SELECT b.id FROM users u JOIN memberships m ON m.user_id = u.id JOIN businesses b ON b.id = m.business_id WHERE u.email = ? COLLATE NOCASE AND u.email_verified_at IS NOT NULL AND m.role = 'owner' AND b.owner_user_id = u.id LIMIT 1"
   ).bind(email).first<{ id: string }>();
 
   return match?.id ?? null;
@@ -173,10 +175,19 @@ export async function processSquareSubscriptionEvent(
 ): Promise<"processed" | "ignored"> {
   if (!event.type?.startsWith("subscription.")) return "ignored";
 
-  const subscription = event.data?.object?.subscription;
+  const notification = event.data?.object?.subscription;
   const config = getConfig(env);
-  if (!subscription?.id || !subscription.customer_id || !config) return "ignored";
-  if (subscription.plan_variation_id !== config.planVariationId) return "ignored";
+  if (!notification?.id || !config) return "ignored";
+
+  // Webhook delivery order is not guaranteed. Do not apply stale event payloads
+  // as billing truth: retrieve Square's current subscription state instead.
+  const response = await squareFetch<{ subscription?: SquareSubscription }>(
+    env, "/v2/subscriptions/" + encodeURIComponent(notification.id), { method: "GET" }
+  );
+  const subscription = response.subscription;
+  if (!subscription?.id || subscription.id !== notification.id || !subscription.customer_id ||
+      subscription.plan_variation_id !== config.planVariationId ||
+      (subscription.location_id && subscription.location_id !== config.locationId)) return "ignored";
 
   const bySubscription = await env.DB.prepare(
     "SELECT business_id FROM subscriptions WHERE provider_subscription_id = ? LIMIT 1"
@@ -228,6 +239,7 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
   if (context instanceof Response) return context;
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
+  if (business.role !== "owner") return json({ error: "Only the business owner can manage billing." }, { status: 403 });
   if (!context.user.emailVerified) return json({ error: "Verify your email before upgrading your plan.", code: "EMAIL_VERIFICATION_REQUIRED" }, { status: 403 });
   const config = getConfig(env);
 
@@ -326,6 +338,8 @@ export async function reconcileBilling(request: Request, env: Env): Promise<Resp
   if (context instanceof Response) return context;
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
+  if (business.role !== "owner") return json({ error: "Only the business owner can manage billing." }, { status: 403 });
+  if (!context.user.emailVerified) return json({ error: "Verify your email before reconciling a subscription.", code: "EMAIL_VERIFICATION_REQUIRED" }, { status: 403 });
   if (!getConfig(env)) return json({ error: "Square billing is not configured yet." }, { status: 503 });
 
   const customerIds = await searchSquareCustomers(env, context.user.email);
