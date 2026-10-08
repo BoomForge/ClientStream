@@ -152,7 +152,7 @@ async function emailDueReminders(env: Env, now: string): Promise<void> {
   if (!emailConfigured(env)) return;
 
   const result = await env.DB.prepare(
-    "SELECT r.id, r.payload_json, r.kind, r.scheduled_for, u.email, u.email_verified_at, b.name AS business_name FROM reminders r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = b.owner_user_id WHERE r.status = 'pending' AND r.scheduled_for <= ? AND r.notified_at IS NULL ORDER BY r.scheduled_for ASC LIMIT 50"
+    "SELECT r.id, r.payload_json, r.kind, r.scheduled_for, u.email, u.email_verified_at, b.name AS business_name FROM reminders r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = b.owner_user_id WHERE b.owner_reminder_email_enabled = 1 AND r.status = 'pending' AND r.scheduled_for <= ? AND r.notified_at IS NULL ORDER BY r.scheduled_for ASC LIMIT 50"
   ).bind(now).all<{
     id: string;
     payload_json: string | null;
