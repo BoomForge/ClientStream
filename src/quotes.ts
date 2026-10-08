@@ -226,6 +226,17 @@ export async function updateQuote(request: Request, env: Env): Promise<Response>
 
   const allowed = new Set(["draft", "sent", "accepted", "declined", "expired"]);
   const status = typeof body.status === "string" && allowed.has(body.status) ? body.status : existing.status;
+  // Issued or accepted documents must never be returned to draft.
+  const legalTransitions: Record<string, string[]> = {
+    draft: ["draft", "sent", "declined"],
+    sent: ["sent", "accepted", "declined", "expired"],
+    accepted: ["accepted"],
+    declined: ["declined"],
+    expired: ["expired"]
+  };
+  if (!legalTransitions[existing.status]?.includes(status)) {
+    return json({ error: "This quote status change is not permitted.", code: "INVALID_STATUS_TRANSITION" }, { status: 409 });
+  }
   const expiresAt = "expiresAt" in body ? textValue(body.expiresAt, 40) : existing.expires_at;
   const notes = "notes" in body ? textValue(body.notes, 5000) : existing.notes;
   const now = new Date().toISOString();
