@@ -84,5 +84,9 @@ jobs:
             exit 1
           fi
 
+      - name: Prove encrypted local backup restore
+        shell: bash
+        run: bash scripts/drill-local-backup.sh
+
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run
