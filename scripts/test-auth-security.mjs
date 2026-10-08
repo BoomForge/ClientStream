@@ -23,6 +23,8 @@ try {
   created = true;
   const registrationSession = signup.cookie;
   active = registrationSession;
+  expect(await request("/api/billing/checkout", "POST", {}), 403, "unverified Square checkout denied");
+  expect(await request("/api/billing/reconcile", "POST", {}), 403, "unverified Square reconciliation denied");
   const secondLogin = await request("/api/auth/login", "POST", { email, password });
   expect(secondLogin, 200, "second login");
   active = secondLogin.cookie;

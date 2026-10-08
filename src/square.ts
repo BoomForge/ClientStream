@@ -57,9 +57,29 @@ export async function squareWebhook(request: Request, env: Env): Promise<Respons
   const eventType = event.type;
   if (!eventId || !eventType) return json({ error: "Square event is missing id or type." }, { status: 400 });
 
-  await env.DB.prepare(
+  const now = new Date().toISOString();
+  const inserted = await env.DB.prepare(
     "INSERT OR IGNORE INTO square_webhook_events (id, event_type, payload_json, status, received_at) VALUES (?, ?, ?, 'received', ?)"
-  ).bind(eventId, eventType, rawBody, new Date().toISOString()).run();
+  ).bind(eventId, eventType, rawBody, now).run();
+
+  if (inserted.meta.changes !== 1) {
+    // Square retries and can deliver duplicates. Do not re-apply terminal events.
+    const row = await env.DB.prepare(
+      "SELECT status FROM square_webhook_events WHERE id = ?"
+    ).bind(eventId).first<{ status: string }>();
+    if (row?.status === "processed" || row?.status === "ignored") {
+      return json({ received: true, duplicate: true });
+    }
+    // Retry previously failed events and recover stale claimed events, but
+    // don't process the same ID concurrently while the first call is running.
+    const cutoff = new Date(Date.now() - 60_000).toISOString();
+    const claim = await env.DB.prepare(
+      "UPDATE square_webhook_events SET status = 'received', received_at = ?, processed_at = NULL, error = NULL WHERE id = ? AND (status = 'failed' OR (status = 'received' AND received_at < ?))"
+    ).bind(now, eventId, cutoff).run();
+    if (claim.meta.changes !== 1) {
+      return json({ error: "Webhook processing is already underway; retry later." }, { status: 503 });
+    }
+  }
 
   try {
     const status = await processSquareSubscriptionEvent(env, event);

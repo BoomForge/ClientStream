@@ -118,6 +118,31 @@ jobs:
             exit 1
           fi
 
+      - name: Verify signed Square webhook replay protection
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8795 --var SQUARE_WEBHOOK_SIGNATURE_KEY:clientstream-test-webhook-key --var SQUARE_WEBHOOK_URL:http://127.0.0.1:8795/api/webhooks/square > /tmp/clientstream-square-webhook.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8795/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "Webhook test Worker never became ready"
+            tail -n 70 /tmp/clientstream-square-webhook.log
+            exit 1
+          fi
+          if ! CLIENTSTREAM_TEST_URL=http://127.0.0.1:8795 node scripts/test-square-webhook.mjs; then
+            tail -n 70 /tmp/clientstream-square-webhook.log
+            exit 1
+          fi
+
       - name: Prove encrypted local backup restore
         shell: bash
         run: bash scripts/drill-local-backup.sh
