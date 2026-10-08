@@ -674,6 +674,7 @@ async function loadSettings() {
     form.elements.businessAddress.value = state.settings.business_address || "";
     form.elements.googleReviewUrl.value = state.settings.google_review_url || "";
     form.elements.gstRegistered.checked = Boolean(state.settings.gst_registered);
+    $("#owner-reminder-email-enabled").checked = Boolean(state.settings.owner_reminder_email_enabled);
   } catch (error) {
     toast(error.message, true);
   }
@@ -692,7 +693,8 @@ $("#settings-form").addEventListener("submit", async (event) => {
         businessPhone: form.get("businessPhone"),
         businessAddress: form.get("businessAddress"),
         googleReviewUrl: form.get("googleReviewUrl"),
-        gstRegistered: form.get("gstRegistered") === "on"
+        gstRegistered: form.get("gstRegistered"),
+        ownerReminderEmailEnabled: $("#owner-reminder-email-enabled").checked === "on"
       })
     });
     state.settings = data.settings;
