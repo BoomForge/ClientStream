@@ -20,7 +20,7 @@ import { deleteAccount, exportAccountData } from "./account";
 import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } from "./security";
 import { runMaintenance } from "./maintenance";
 
-const VERSION = "0.8.2-native-pbkdf2";
+const VERSION = "0.8.4-reminder-print";
 
 async function api(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
