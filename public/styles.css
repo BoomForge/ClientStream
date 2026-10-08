@@ -115,9 +115,9 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   .auth-copy { align-self: end; }
   .app { grid-template-columns: 76px 1fr; }
   .sidebar { padding-inline: 10px; }
-  .sidebar-brand span:last-child, .nav-item { font-size: 0; }
+  .sidebar-brand span:last-child { display: none; }
   .sidebar-brand { justify-content: center; padding-inline: 0; }
-  .nav-item::first-letter { font-size: .9rem; }
+  .nav-item { font-size: .68rem; text-align: center; padding: 12px 4px; overflow-wrap: anywhere; }
   .plan-chip { display: none; }
   .metric-grid { grid-template-columns: repeat(2,1fr); }
 }
@@ -306,3 +306,18 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
 .account-tools h4 { margin:0 0 5px; color:var(--ink); }
 .account-tools p { margin:0; color:var(--muted); line-height:1.55; }
 .account-tools-actions { display:flex; flex-wrap:wrap; gap:8px; }
+
+/* Visible keyboard focus without relying on color alone. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #0369a1;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .sidebar nav { scrollbar-width: auto; }
+  .sidebar nav::-webkit-scrollbar { display: block; height: 4px; }
+  .nav-item { min-height: 44px; }
+  .document-item-row { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
