@@ -1,0 +1,20 @@
+name: ClientStream production health
+
+on:
+  schedule:
+    - cron: "11 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check production API health
+        env:
+          CLIENTSTREAM_HEALTH_URL: ${{ vars.CLIENTSTREAM_HEALTH_URL }}
+        run: node scripts/probe-health.mjs
