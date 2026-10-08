@@ -29,7 +29,15 @@ async function load() {
 
   document.title = (type === "invoice" ? "Invoice " : "Quote ") + doc.number;
   setText("#business-name", doc.business_name || "ClientStream");
-  setText("#doc-kind", type === "invoice" ? "Invoice" : "Quote");
+  setText("#business-abn", doc.business_abn ? "ABN: " + doc.business_abn : "");
+  setText("#business-email", doc.business_email);
+  setText("#business-phone", doc.business_phone);
+  setText("#business-address", doc.business_address);
+  const chargesGst = Number(doc.tax_cents) > 0;
+  setText("#tax-label", chargesGst ? "GST (10%)" : "GST not charged");
+  setText("#doc-kind", type === "invoice"
+    ? (chargesGst && doc.business_abn ? "Tax Invoice" : "Invoice")
+    : "Quote");
   setText("#doc-number", doc.number);
   setText("#client-name", doc.client_name);
   setText("#client-company", doc.client_company);
