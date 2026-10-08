@@ -54,6 +54,10 @@ jobs:
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler d1 migrations apply clientstream-db --remote
 
+      - name: Inspect legacy password iteration counts (counts only)
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS credentials_over_worker_limit FROM password_credentials WHERE iterations > 100000"
+
       - name: Deploy Worker and static assets
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler deploy
