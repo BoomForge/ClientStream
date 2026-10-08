@@ -822,11 +822,35 @@ function fillClientSelects() {
   });
 }
 
+function visibleRecords(section, rows, searchable) {
+  const query = ($("#" + section + "-search")?.value || "").trim().toLocaleLowerCase();
+  const status = $("#" + section + "-status")?.value || "";
+  const sort = $("#" + section + "-sort")?.value || "recent";
+  const visible = rows.filter((record) =>
+    (!status || record.status === status) &&
+    (!query || searchable(record).toLocaleLowerCase().includes(query))
+  );
+  if (sort === "name") visible.sort((a, b) =>
+    searchable(a).localeCompare(searchable(b), "en-AU", { numeric: true })
+  );
+  return visible;
+}
+
+for (const section of ["clients", "jobs", "quotes", "invoices"]) {
+  for (const field of ["search", "status", "sort"]) {
+    $("#" + section + "-" + field)?.addEventListener(
+      field === "search" ? "input" : "change",
+      () => ({ clients: renderClients, jobs: renderJobs, quotes: renderQuotes, invoices: renderInvoices })[section]()
+    );
+  }
+}
+
 function renderClients() {
   const body = $("#clients-body");
-  $("#clients-empty").classList.toggle("hidden", state.clients.length > 0);
+  const visible = visibleRecords("clients", state.clients, (client) => [client.name, client.company, client.email, client.phone].filter(Boolean).join(" "));
+  $("#clients-empty").classList.toggle("hidden", visible.length > 0);
 
-  body.replaceChildren(...state.clients.map((client) => {
+  body.replaceChildren(...visible.map((client) => {
     const row = document.createElement("tr");
     row.append(
       td(client.name),
@@ -902,9 +926,10 @@ async function loadJobs() {
 
 function renderJobs() {
   const body = $("#jobs-body");
-  $("#jobs-empty").classList.toggle("hidden", state.jobs.length > 0);
+  const visible = visibleRecords("jobs", state.jobs, (job) => [job.title, job.client_name, job.status].filter(Boolean).join(" "));
+  $("#jobs-empty").classList.toggle("hidden", visible.length > 0);
 
-  body.replaceChildren(...state.jobs.map((job) => {
+  body.replaceChildren(...visible.map((job) => {
     const row = document.createElement("tr");
     row.append(td(job.title), td(job.client_name), td(dateText(job.scheduled_for)));
 
@@ -1092,9 +1117,10 @@ async function loadQuotes() {
 
 function renderQuotes() {
   const body = $("#quotes-body");
-  $("#quotes-empty").classList.toggle("hidden", state.quotes.length > 0);
+  const visible = visibleRecords("quotes", state.quotes, (quote) => [quote.number, quote.client_name, quote.status].filter(Boolean).join(" "));
+  $("#quotes-empty").classList.toggle("hidden", visible.length > 0);
 
-  body.replaceChildren(...state.quotes.map((quote) => {
+  body.replaceChildren(...visible.map((quote) => {
     const row = document.createElement("tr");
     row.append(td(quote.number), td(quote.client_name), td(money(quote.total_cents)));
 
@@ -1211,9 +1237,10 @@ async function loadInvoices() {
 
 function renderInvoices() {
   const body = $("#invoices-body");
-  $("#invoices-empty").classList.toggle("hidden", state.invoices.length > 0);
+  const visible = visibleRecords("invoices", state.invoices, (invoice) => [invoice.number, invoice.client_name, invoice.status].filter(Boolean).join(" "));
+  $("#invoices-empty").classList.toggle("hidden", visible.length > 0);
 
-  body.replaceChildren(...state.invoices.map((invoice) => {
+  body.replaceChildren(...visible.map((invoice) => {
     const outstanding = Math.max(0, invoice.total_cents - invoice.amount_paid_cents);
     const row = document.createElement("tr");
     row.append(td(invoice.number), td(invoice.client_name), td(money(invoice.total_cents)), td(money(outstanding)));
