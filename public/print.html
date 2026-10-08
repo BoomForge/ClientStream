@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'">
-  <meta name="theme-color" content="#1e3a8a">\n  <title>ClientStream document</title>\n  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta name="theme-color" content="#1e3a8a">
+  <title>ClientStream document</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/print.css">
 </head>
 <body>
@@ -17,6 +19,7 @@
 </svg><span id="business-name">ClientStream</span></div>
       <div class="doc-title"><span id="doc-kind">Document</span><strong id="doc-number"></strong></div>
     </header>
+    <section class="meta"><div><p id="business-abn"></p><p id="business-email"></p><p id="business-phone"></p><p id="business-address"></p></div></section>
     <section class="meta">
       <div><span>Bill to</span><strong id="client-name"></strong><p id="client-company"></p><p id="client-address"></p><p id="client-email"></p></div>
       <div class="meta-right"><p><span>Status</span><strong id="doc-status"></strong></p><p><span id="date-label">Date</span><strong id="doc-date"></strong></p><p><span id="secondary-date-label">Due</span><strong id="secondary-date"></strong></p></div>
@@ -27,7 +30,7 @@
     </table>
     <section class="totals">
       <div><span>Subtotal</span><strong id="subtotal"></strong></div>
-      <div><span>Tax</span><strong id="tax"></strong></div>
+      <div><span id="tax-label">GST</span><strong id="tax"></strong></div>
       <div class="grand"><span>Total</span><strong id="total"></strong></div>
       <div id="paid-row" class="hidden"><span>Paid</span><strong id="paid"></strong></div>
       <div id="balance-row" class="hidden grand"><span>Balance</span><strong id="balance"></strong></div>
