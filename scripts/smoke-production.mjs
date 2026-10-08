@@ -27,6 +27,13 @@ async function call(path, options = {}) {
 }
 
 async function cleanup() {
+  if (!cookie) {
+    try {
+      await call("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    } catch (error) {
+      console.error("Smoke cleanup could not restore login:", error.message);
+    }
+  }
   if (!cookie) return;
   try {
     await call("/api/account/delete", {
@@ -66,6 +73,7 @@ try {
     })
   });
 
+  await call("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
   const me = await call("/api/me", { method: "GET" });
   if (!me.business?.id) throw new Error("Business onboarding failed.");
 
