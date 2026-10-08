@@ -84,6 +84,22 @@ jobs:
             exit 1
           fi
 
+      - name: Validate authentication and session revocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-auth.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8794/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          if ! node scripts/test-auth-security.mjs; then
+            tail -n 70 /tmp/clientstream-auth.log
+            exit 1
+          fi
+
       - name: Verify exact Free plan limits
         shell: bash
         run: |
