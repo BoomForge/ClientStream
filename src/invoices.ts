@@ -1,3 +1,4 @@
+import { businessToday } from "./local-date";
 import type { Env } from "./types";
 import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
@@ -14,12 +15,12 @@ function paymentInvoiceId(pathname: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function isPastDate(value: string | null): boolean {
-  return Boolean(value && value.slice(0, 10) < new Date().toISOString().slice(0, 10));
+function isPastDate(value: string | null, today: string): boolean {
+  return Boolean(value && value.slice(0, 10) < today);
 }
 
 async function refreshOverdue(env: Env, businessId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await businessToday(env, businessId);
   await env.DB.prepare(
     "UPDATE invoices SET status = 'overdue', updated_at = ? WHERE business_id = ? AND status IN ('sent','part_paid') AND due_at IS NOT NULL AND substr(due_at,1,10) < ? AND amount_paid_cents < total_cents"
   ).bind(new Date().toISOString(), businessId, today).run();
@@ -273,7 +274,7 @@ export async function updateInvoice(request: Request, env: Env): Promise<Respons
   const now = new Date().toISOString();
   const issuedAt = status === "sent" && !existing.issued_at ? now : existing.issued_at;
 
-  if (status === "sent" && isPastDate(dueAt)) status = "overdue";
+  if (status === "sent" && isPastDate(dueAt, await businessToday(env, business.id))) status = "overdue";
 
   const statements = [
     env.DB.prepare(
@@ -347,7 +348,7 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
 
   const newPaid = invoice.amount_paid_cents + amountCents;
   const paid = newPaid >= invoice.total_cents;
-  const status = paid ? "paid" : (isPastDate(invoice.due_at) ? "overdue" : "part_paid");
+  const status = paid ? "paid" : (isPastDate(invoice.due_at, await businessToday(env, business.id)) ? "overdue" : "part_paid");
   const now = new Date().toISOString();
   const paymentId = crypto.randomUUID();
 
