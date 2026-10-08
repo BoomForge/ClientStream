@@ -50,6 +50,10 @@ jobs:
         if: steps.cloudflare.outputs.ready == 'true'
         run: npm install
 
+      - name: Stamp checked-out release revision
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: node scripts/stamp-revision.mjs "$(git rev-parse HEAD)"
+
       - name: Apply D1 migrations
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler d1 migrations apply clientstream-db --remote
@@ -67,6 +71,7 @@ jobs:
         shell: bash
         env:
           CLIENTSTREAM_SMOKE_URL: https://clientstream.theevansorrell.workers.dev
+          CLIENTSTREAM_EXPECT_REVISION: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
           # Capture only registration errors for the disposable smoke request;

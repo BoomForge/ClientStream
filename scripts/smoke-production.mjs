@@ -49,18 +49,22 @@ try {
   const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
   const expectedVersion = source.match(/const VERSION = "([^"]+)"/)?.[1];
   if (!expectedVersion) throw new Error("Unable to determine expected ClientStream version.");
+  const expectedRevision = process.env.CLIENTSTREAM_EXPECT_REVISION || null;
 
   let health = null;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     try {
       health = await call("/api/health", { method: "GET" });
-      if (health.status === "ok" && health.database === "bound" && health.version === expectedVersion) break;
+      if (health.status === "ok" && health.database === "bound" && health.databaseReady === true &&
+          health.version === expectedVersion && (!expectedRevision || health.revision === expectedRevision)) break;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  if (!health || health.version !== expectedVersion) {
-    throw new Error("Deployed Worker did not reach expected version " + expectedVersion + ".");
+  if (!health || health.version !== expectedVersion || health.databaseReady !== true ||
+      (expectedRevision && health.revision !== expectedRevision)) {
+    throw new Error("Deployed Worker failed exact revision/database readiness check: expected " +
+      (expectedRevision || expectedVersion) + ", observed " + (health?.revision || health?.version || "no response") + ".");
   }
 
   await call("/api/auth/register", {
