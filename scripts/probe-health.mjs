@@ -4,7 +4,7 @@ for (let attempt = 1; attempt <= attempts; attempt += 1) {
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(12000), cache: "no-store" });
     const body = await response.json();
-    if (!response.ok || body.status !== "ok" || body.service !== "clientstream" || !body.version) {
+    if (!response.ok || body.status !== "ok" || body.service !== "clientstream" || !body.version || body.databaseReady !== true) {
       throw Error("Invalid API health response (" + response.status + ")");
     }
     console.log("ClientStream API healthy, reported version:", body.version);
