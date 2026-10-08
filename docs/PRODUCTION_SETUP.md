@@ -44,9 +44,9 @@ Square is deliberately optional until credentials are available. Add these repos
 - `SQUARE_PRO_PLAN_VARIATION_ID`
 - `SQUARE_WEBHOOK_SIGNATURE_KEY`
 - `SQUARE_WEBHOOK_URL=https://app.clientstream.io/api/webhooks/square`
-- `SQUARE_ENVIRONMENT=production`
+- `SQUARE_ENVIRONMENT=sandbox` for first acceptance, then explicitly change to `production` only after sandbox success.
 
-Then run **Configure ClientStream Runtime**.
+Then run **Configure ClientStream Runtime**. The app will keep Square billing unavailable until `SQUARE_ENVIRONMENT` is explicitly set. Confirm signature verification, duplicated and out-of-order event handling, and upgrade/downgrade entitlements in Sandbox before any real credentials are added.
 
 ## 4. Encrypted database backup
 
