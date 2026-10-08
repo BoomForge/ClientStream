@@ -694,7 +694,7 @@ $("#settings-form").addEventListener("submit", async (event) => {
         businessAddress: form.get("businessAddress"),
         googleReviewUrl: form.get("googleReviewUrl"),
         gstRegistered: form.get("gstRegistered"),
-        ownerReminderEmailEnabled: $("#owner-reminder-email-enabled").checked === "on"
+        ownerReminderEmailEnabled: $("#owner-reminder-email-enabled").checked
       })
     });
     state.settings = data.settings;
