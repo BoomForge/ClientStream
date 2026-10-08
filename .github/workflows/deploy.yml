@@ -69,9 +69,9 @@ jobs:
           CLIENTSTREAM_SMOKE_URL: https://clientstream.theevansorrell.workers.dev
         run: |
           set -euo pipefail
-          # Capture only registration hash errors for the disposable smoke request;
+          # Capture only registration errors for the disposable smoke request;
           # do not dump unrelated request logs, tokens, or customer information.
-          npx wrangler tail clientstream --format pretty --method POST --search "ClientStream registration password derivation failed" > /tmp/clientstream-hash-tail.log 2>&1 &
+          npx wrangler tail clientstream --format pretty --method POST --search "ClientStream registration" > /tmp/clientstream-registration-tail.log 2>&1 &
           tail_pid=$!
           trap 'kill "$tail_pid" 2>/dev/null || true' EXIT
           sleep 5
