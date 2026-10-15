@@ -122,6 +122,11 @@ try {
     throw new Error("Invoice conversion totals/items failed.");
   }
 
+  // Converted invoices begin as drafts. Explicitly issue before recording payment.
+  await call("/api/invoices/" + encodeURIComponent(invoiceId), {
+    method: "PATCH", body: JSON.stringify({ status: "sent" })
+  });
+
   const payment = await call("/api/invoices/" + encodeURIComponent(invoiceId) + "/payments", {
     method: "POST",
     body: JSON.stringify({ amountCents: 16500 })
