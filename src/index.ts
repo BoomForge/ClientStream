@@ -13,6 +13,7 @@ import { paypalWebhook } from "./paypal-webhook";
 import { paypalConfig } from "./paypal";
 import { billingStatus, cancelBilling, createCheckout, reconcileBilling } from "./billing";
 import { emailConfigured } from "./email";
+import { submitErrorReport } from "./error-reports";
 import { sendInvoiceEmail, sendQuoteEmail } from "./document-email";
 import { cancelReminder, completeReminder, createReminder, today } from "./reminders";
 import { exportReportCsv, reportSummary } from "./reports";
@@ -63,6 +64,8 @@ async function api(request: Request, env: Env): Promise<Response> {
       timestamp: new Date().toISOString()
     });
   }
+
+  if (request.method === "POST" && path === "/api/error-reports") return submitErrorReport(request, env);
 
   if (request.method === "GET" && path === "/api/plans") return json({ plans: PLAN_CATALOG });
 

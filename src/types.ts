@@ -14,6 +14,7 @@ export interface Env {
   AI?: Ai;
   AUTH_RATE_LIMITER?: RateLimit;
   MUTATION_RATE_LIMITER?: RateLimit;
+  REPORT_RATE_LIMITER?: RateLimit;
   AI_RATE_LIMITER?: RateLimit;
   PUBLIC_APP_URL?: string;
   SUPPORT_EMAIL?: string;

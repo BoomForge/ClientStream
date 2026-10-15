@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#1e3a8a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'">
+  <title>Report an error | ClientStream</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/report-error.js" defer></script>
+</head>
+<body>
+  <main class="support-page">
+    <div class="support-container">
+      <header class="support-header">
+        <a class="support-brand" href="/">ClientStream</a>
+        <a class="support-back" href="/">← Back to ClientStream</a>
+      </header>
+      <section class="support-card" aria-labelledby="report-title">
+        <p class="eyebrow">SUPPORT</p>
+        <h1 id="report-title">Report an error</h1>
+        <p class="support-intro">Tell us what went wrong so we can investigate. You don't need to sign in. Please do not include passwords, payment details or private client information.</p>
+        <form id="error-report-form" class="support-form">
+          <div class="honeypot" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+          <label>What kind of problem? <span class="required" aria-hidden="true">*</span>
+            <select name="issueType" required>
+              <option value="">Select a category</option>
+              <option>Something not working</option>
+              <option>Error message</option>
+              <option>Login or account</option>
+              <option>Billing</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>Short summary <span class="required" aria-hidden="true">*</span>
+            <input name="summary" type="text" minlength="5" maxlength="140" required placeholder="e.g. Save invoice does nothing">
+          </label>
+          <label>What happened? <span class="required" aria-hidden="true">*</span>
+            <textarea name="details" minlength="20" maxlength="4000" required rows="5" placeholder="What did you expect, and what actually happened?"></textarea>
+          </label>
+          <label>Steps to reproduce (optional)
+            <textarea name="steps" maxlength="2000" rows="3" placeholder="1. Open Invoices&#10;2. Select a client&#10;3. Click Save"></textarea>
+          </label>
+          <label>Your email (optional, for a reply)
+            <input name="email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com">
+          </label>
+          <label>Page where it happened (optional)
+            <input name="pageUrl" type="text" maxlength="500" placeholder="e.g. /invoices">
+          </label>
+          <p class="hint">We also include your browser type and submission time to help investigate.</p>
+          <div id="error-report-status" role="status" aria-live="polite" class="support-status" hidden></div>
+          <button class="primary" type="submit" id="send-error-report">Send error report</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -51,6 +51,14 @@
       }
     },
     {
+      "name": "REPORT_RATE_LIMITER",
+      "namespace_id": "526004",
+      "simple": {
+        "limit": 3,
+        "period": 60
+      }
+    },
+    {
       "name": "AI_RATE_LIMITER",
       "namespace_id": "526003",
       "simple": {
