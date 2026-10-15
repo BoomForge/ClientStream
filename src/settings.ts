@@ -16,10 +16,10 @@ function validOptionalUrl(value: string | null): boolean {
 function validBrandLogo(value: string | null): boolean {
   if (!value) return true;
   const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
-  if (!match || match[2].length > 145_000) return false;
+  if (!match || match[2].length > 410_000) return false;
   try {
     const bytes = atob(match[2]);
-    if (bytes.length > 100_000 || bytes.length < 24) return false;
+    if (bytes.length > 300_000 || bytes.length < 24) return false;
     if (match[1] === "png") {
       return bytes.charCodeAt(0) === 137 && bytes.slice(1, 4) === "PNG" &&
         bytes.charCodeAt(4) === 13 && bytes.charCodeAt(5) === 10;
@@ -117,7 +117,7 @@ export async function updateSettings(request: Request, env: Env): Promise<Respon
   const bankAccountNumber = "bankAccountNumber" in body ? textValue(body.bankAccountNumber, 20) : current.bank_account_number;
   const paymentInstructions = "paymentInstructions" in body ? textValue(body.paymentInstructions, 1200) : current.payment_instructions;
   if (!validOptionalUrl(websiteUrl)) return json({ error: "Website must be a valid web address." }, { status: 400 });
-  if (!validBrandLogo(logoDataUrl)) return json({ error: "Upload a PNG or JPEG logo smaller than 100 KB." }, { status: 400 });
+  if (!validBrandLogo(logoDataUrl)) return json({ error: "Upload a PNG or JPEG logo up to 300 KB." }, { status: 400 });
   if (bankBsb && !/^\d{6}$/.test(bankBsb)) return json({ error: "Australian BSB must contain six digits." }, { status: 400 });
   if (bankAccountNumber && !/^\d{4,12}$/.test(bankAccountNumber.replace(/[ -]/g, ""))) {
     return json({ error: "Bank account number must contain 4–12 digits." }, { status: 400 });

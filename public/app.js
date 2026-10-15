@@ -5,6 +5,7 @@ const state = {
   quotes: [],
   invoices: [],
   expenses: [],
+  income: [],
   dashboard: null,
   billing: null,
   today: null,
@@ -288,6 +289,7 @@ async function refreshAll() {
     loadQuotes(),
     loadInvoices(),
     loadExpenses(),
+    loadIncome(),
     loadToday(),
     loadSettings(),
     loadSmartUsage(),
@@ -606,13 +608,42 @@ async function loadReport() {
   }
 }
 
+function renderCashFlow() {
+  const host = $("#cashflow-chart");
+  const data = state.report?.cashFlow || [];
+  if (!data.length) { host.replaceChildren(); return; }
+  const top = Math.max(1, ...data.flatMap((m) => [m.incomeCents, m.expenseCents]));
+  host.replaceChildren(...data.map((month) => {
+    const entry = document.createElement("div");
+    entry.className = "cashflow-month";
+    const bars = document.createElement("div");
+    bars.className = "cashflow-month-bars";
+    for (const [key, label] of [["incomeCents", "Income"], ["expenseCents", "Expenses"]]) {
+      const bar = document.createElement("div");
+      bar.className = "cashflow-bar " + (key === "incomeCents" ? "income" : "expense");
+      bar.style.height = Math.max(2, Math.round(month[key] / top * 100)) + "%";
+      bar.title = month.month + " · " + label + ": " + money(month[key]);
+      bars.append(bar);
+    }
+    const monthLabel = document.createElement("span");
+    monthLabel.textContent = month.month.slice(2);
+    entry.append(bars, monthLabel);
+    host.append(entry);
+  }));
+  host.setAttribute("aria-label", "Monthly cash flow: " + data.map((m) =>
+    m.month + " income " + money(m.incomeCents) + " expenses " + money(m.expenseCents)).join("; "));
+}
+
 function renderReport() {
   const summary = state.report?.summary || {};
   const definitions = [
-    ["Income received", money(summary.incomeCents)],
-    ["Expenses", money(summary.expenseCents)],
-    ["Net", money(summary.netCents)],
-    ["Outstanding", money(summary.outstandingCents)]
+    ["Invoiced in period", money(summary.invoicesIssuedCents)],
+    ["Received from invoices", money(summary.invoiceIncomeCents)],
+    ["Other income", money(summary.otherIncomeCents)],
+    ["Total income received", money(summary.incomeCents)],
+    ["Expenses paid", money(summary.expenseCents)],
+    ["Net cash flow", money(summary.netCents)],
+    ["Outstanding now", money(summary.outstandingCents)]
   ];
 
   $("#report-metrics").replaceChildren(...definitions.map(([label, value]) => {
@@ -626,13 +657,14 @@ function renderReport() {
     return card;
   }));
 
+  renderCashFlow();
   const pro = state.me?.business?.plan === "pro";
   $("#export-report").disabled = !pro;
   $("#export-report").textContent = pro ? "Export CSV" : "CSV export · Pro";
   $("#report-note").textContent =
     "Range " + state.report.range.from + " to " + state.report.range.to +
     " · " + (summary.invoiceCount || 0) + " invoices · " +
-    (summary.paymentCount || 0) + " payments · " + (summary.expenseCount || 0) + " expenses.";
+    (summary.paymentCount || 0) + " actual receipts · " + (summary.expenseCount || 0) + " expenses. Outstanding now is the current unpaid balance on issued invoices, independent of the report date range.";
 }
 
 $("#report-form").addEventListener("submit", async (event) => {
@@ -773,9 +805,9 @@ function updateLogoPreview(source) {
 $("#business-logo-file").addEventListener("change", async (event) => {
   const file = event.currentTarget.files?.[0];
   if (!file) return;
-  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 100_000) {
+  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 300_000) {
     event.currentTarget.value = "";
-    toast("Choose a PNG or JPEG smaller than 100 KB.", true);
+    toast("Choose a PNG or JPEG up to 300 KB.", true);
     return;
   }
   try {
@@ -945,6 +977,7 @@ function renderDashboard() {
     ["Active clients", metrics.clients || 0, "clients", false],
     ["Open jobs", metrics.openJobs || 0, "openJobs", false],
     ["Outstanding", money(metrics.outstandingCents), "outstandingCents", true],
+    ["Income received", money(metrics.incomeCents), "incomeCents", true],
     ["Expenses", money(metrics.expenseCents), "expenseCents", true]
   ];
 
@@ -1579,8 +1612,80 @@ $("#payment-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ amountCents: Math.round(Number(form.get("amount")) * 100) })
     });
     $("#payment-dialog").close();
-    await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
+    await Promise.all([loadInvoices(), loadIncome(), loadDashboard(), loadReport(), loadToday()]);
     toast("Payment recorded.");
+  } catch (error) { toast(error.message, true); }
+});
+
+async function loadIncome() {
+  try {
+    const data = await api("/api/income");
+    state.income = data.income || [];
+    renderIncome();
+  } catch (error) { toast(error.message, true); }
+}
+
+function openIncomeDialog(item = null) {
+  const form = $("#income-form");
+  form.reset();
+  form.elements.id.value = item?.id || "";
+  form.elements.description.value = item?.description || "";
+  form.elements.amount.value = item ? (item.amount_cents / 100).toFixed(2) : "";
+  form.elements.receivedAt.value = item?.paid_at?.slice(0,10) || new Date().toISOString().slice(0,10);
+  form.elements.notes.value = item?.notes || "";
+  $("#income-dialog-title").textContent = item ? "Edit income" : "Add income";
+  $("#save-income-button").textContent = item ? "Save changes" : "Add income";
+  $("#income-dialog").showModal();
+}
+
+function renderIncome() {
+  $("#income-empty").classList.toggle("hidden", state.income.length > 0);
+  $("#income-body").replaceChildren(...state.income.map((item) => {
+    const row = document.createElement("tr");
+    const isInvoice = Boolean(item.invoice_id);
+    row.append(
+      td(isInvoice ? "Invoice payment" : (item.description || "Other income")),
+      td(isInvoice ? [item.invoice_number, item.client_name].filter(Boolean).join(" · ") : "Other income"),
+      td(dateText(item.paid_at)), td(money(item.amount_cents))
+    );
+    const actions = document.createElement("td");
+    actions.className = "row-actions";
+    if (isInvoice) {
+      actions.append(button("Invoice", () => setView("invoices")));
+    } else {
+      actions.append(button("Edit", () => openIncomeDialog(item)));
+      actions.append(button("Delete", async () => {
+        if (!confirm("Delete this income entry? The report totals will be recalculated.")) return;
+        try {
+          await api("/api/income/" + encodeURIComponent(item.id), { method: "DELETE" });
+          await Promise.all([loadIncome(), loadDashboard(), loadReport()]);
+          toast("Income entry deleted.");
+        } catch (error) { toast(error.message, true); }
+      }, true));
+    }
+    row.append(actions);
+    return row;
+  }));
+}
+
+$("#add-income").addEventListener("click", () => openIncomeDialog());
+$("#income-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const id = String(form.get("id") || "");
+  try {
+    await api(id ? "/api/income/" + encodeURIComponent(id) : "/api/income", {
+      method: id ? "PATCH" : "POST",
+      body: JSON.stringify({
+        description: form.get("description"),
+        amountCents: Math.round(Number(form.get("amount")) * 100),
+        receivedAt: form.get("receivedAt"),
+        notes: form.get("notes")
+      })
+    });
+    $("#income-dialog").close();
+    await Promise.all([loadIncome(), loadDashboard(), loadReport()]);
+    toast(id ? "Income updated." : "Income recorded.");
   } catch (error) { toast(error.message, true); }
 });
 
@@ -1593,18 +1698,18 @@ async function loadExpenses() {
 }
 
 function renderExpenses() {
-  const body = $("#expenses-body");
   $("#expenses-empty").classList.toggle("hidden", state.expenses.length > 0);
-  body.replaceChildren(...state.expenses.map((expense) => {
+  $("#expenses-body").replaceChildren(...state.expenses.map((expense) => {
     const row = document.createElement("tr");
     row.append(td(expense.description), td(expense.category), td(dateText(expense.incurred_at)), td(money(expense.amount_cents)));
     const actions = document.createElement("td");
     actions.className = "row-actions";
+    actions.append(button("Edit", () => openExpenseDialog(expense)));
     actions.append(button("Delete", async () => {
       if (!confirm("Delete this expense?")) return;
       try {
         await api("/api/expenses/" + encodeURIComponent(expense.id), { method: "DELETE" });
-        await Promise.all([loadExpenses(), loadDashboard()]);
+        await Promise.all([loadExpenses(), loadDashboard(), loadReport()]);
         toast("Expense deleted.");
       } catch (error) { toast(error.message, true); }
     }, true));
@@ -1613,18 +1718,28 @@ function renderExpenses() {
   }));
 }
 
-$("#add-expense").addEventListener("click", () => {
-  $("#expense-form").reset();
-  $("#expense-form input[name='incurredAt']").value = new Date().toISOString().slice(0, 10);
+function openExpenseDialog(expense = null) {
+  const form = $("#expense-form");
+  form.reset();
+  form.elements.id.value = expense?.id || "";
+  form.elements.description.value = expense?.description || "";
+  form.elements.category.value = expense?.category || "";
+  form.elements.amount.value = expense ? (expense.amount_cents / 100).toFixed(2) : "";
+  form.elements.incurredAt.value = expense?.incurred_at?.slice(0,10) || new Date().toISOString().slice(0,10);
+  form.elements.notes.value = expense?.notes || "";
+  $("#expense-dialog-title").textContent = expense ? "Edit expense" : "Add expense";
+  $("#save-expense-button").textContent = expense ? "Save changes" : "Add expense";
   $("#expense-dialog").showModal();
-});
+}
 
+$("#add-expense").addEventListener("click", () => openExpenseDialog());
 $("#expense-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
+  const id = String(form.get("id") || "");
   try {
-    await api("/api/expenses", {
-      method: "POST",
+    await api(id ? "/api/expenses/" + encodeURIComponent(id) : "/api/expenses", {
+      method: id ? "PATCH" : "POST",
       body: JSON.stringify({
         description: form.get("description"),
         category: form.get("category"),
@@ -1634,8 +1749,8 @@ $("#expense-form").addEventListener("submit", async (event) => {
       })
     });
     $("#expense-dialog").close();
-    await Promise.all([loadExpenses(), loadDashboard()]);
-    toast("Expense added.");
+    await Promise.all([loadExpenses(), loadDashboard(), loadReport()]);
+    toast(id ? "Expense updated." : "Expense added.");
   } catch (error) { toast(error.message, true); }
 });
 

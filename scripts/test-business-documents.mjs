@@ -74,6 +74,14 @@ try {
   assert(billed.bank_bsb === "123456" && billed.bank_account_number === "98765432",
     "Invoice transfer instructions missing");
   assert(billed.payment_instructions.includes("PayID"), "Invoice alternative payment instructions missing");
+  // Server and UI must both support PNG/JPEG branding files up to 300 KB.
+  const rawPng = Buffer.from(logo.split(",")[1], "base64");
+  const acceptedPng = "data:image/png;base64," +
+    Buffer.concat([rawPng, Buffer.alloc(280_000 - rawPng.length)]).toString("base64");
+  await call("/api/settings", "PATCH", { logoDataUrl: acceptedPng });
+  const tooLargePng = "data:image/png;base64," +
+    Buffer.concat([rawPng, Buffer.alloc(300_001 - rawPng.length)]).toString("base64");
+  await call("/api/settings", "PATCH", { logoDataUrl: tooLargePng }, 400);
   await call("/api/settings", "PATCH", { logoDataUrl: null });
   assert((await call("/api/settings")).settings.logo_data_url === null, "Logo removal failed");
   console.log("Business documents passed: customer job editing, logo, business identity, BSB and invoice payment details.");
