@@ -5,7 +5,8 @@ import { json } from "./http";
 import { dashboard } from "./dashboard";
 import { archiveClient, createClient, listClients, updateClient } from "./clients";
 import { cancelJob, createJob, listJobs, updateJob } from "./jobs";
-import { createExpense, deleteExpense, listExpenses } from "./expenses";
+import { createExpense, updateExpense, deleteExpense, listExpenses } from "./expenses";
+import { createIncome, updateIncome, deleteIncome, listIncome } from "./income";
 import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
 import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
 import { paypalWebhook } from "./paypal-webhook";
@@ -147,8 +148,17 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (request.method === "GET") return listExpenses(request, env);
     if (request.method === "POST") return createExpense(request, env);
   }
-  if (/^\/api\/expenses\/[^/]+$/.test(path) && request.method === "DELETE") {
-    return deleteExpense(request, env);
+  if (/^\/api\/expenses\/[^/]+$/.test(path)) {
+    if (request.method === "PATCH") return updateExpense(request, env);
+    if (request.method === "DELETE") return deleteExpense(request, env);
+  }
+  if (path === "/api/income") {
+    if (request.method === "GET") return listIncome(request, env);
+    if (request.method === "POST") return createIncome(request, env);
+  }
+  if (/^\/api\/income\/[^/]+$/.test(path)) {
+    if (request.method === "PATCH") return updateIncome(request, env);
+    if (request.method === "DELETE") return deleteIncome(request, env);
   }
 
   if (request.method === "GET" && path === "/api/reports/summary") return reportSummary(request, env);
