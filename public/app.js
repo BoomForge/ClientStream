@@ -1984,7 +1984,7 @@ $("#expense-form").addEventListener("submit", async (event) => {
 // Dialogs close only using their explicit Cancel/Close controls or after a
 // successful form submission. A drag-select gesture can finish over the
 // backdrop, which used to discard unsaved input when treated as a click.
-$(".close-dialog").forEach((button) => {
+$$(".close-dialog").forEach((button) => {
   button.addEventListener("click", () => button.closest("dialog").close());
 });
 
