@@ -431,3 +431,20 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
 .brand-logo-settings input { max-width: 100%; padding: 10px; }
 .logo-preview { max-width: 180px; max-height: 90px; object-fit: contain; }
 .brand-logo-settings button { justify-self: start; }
+
+/* Distinct actual-income and expense overview. */
+#metric-grid { grid-template-columns: repeat(5, minmax(0,1fr)); }
+#metric-grid .metric { padding: 16px; }
+#metric-grid .metric strong { font-size: clamp(1.3rem, 2vw, 1.8rem); overflow-wrap: anywhere; }
+.finance-hint { padding: 14px 20px; margin: 0; color: var(--muted); line-height: 1.5; background: #f8fbff; border-bottom: 1px solid var(--line); }
+.report-metrics { grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); }
+.cashflow-panel { padding: 12px 20px 22px; border-top: 1px solid var(--line); }
+.cashflow-panel h4 { margin: 6px 0 14px; color: var(--ink); }
+.cashflow-chart { display: flex; align-items: flex-end; gap: 8px; overflow-x: auto; min-height: 160px; padding: 8px 2px; }
+.cashflow-month { display: grid; gap: 5px; align-items: end; justify-items: center; flex: 1 0 38px; max-width: 62px; min-width: 38px; font-size: .65rem; color: var(--muted); }
+.cashflow-month-bars { height: 122px; width: 100%; display: flex; gap: 3px; justify-content: center; align-items: flex-end; }
+.cashflow-bar { flex: 1; max-width: 18px; border-radius: 4px 4px 2px 2px; min-height: 2px; }
+.cashflow-bar.income { background: var(--navy); }
+.cashflow-bar.expense { background: var(--sky); }
+@media (max-width: 1080px) { #metric-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 640px) { #metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .cashflow-panel { padding-inline: 14px; } }
