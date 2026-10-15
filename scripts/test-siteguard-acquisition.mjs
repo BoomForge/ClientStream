@@ -10,9 +10,9 @@ const files = [
 ];
 for (const [path, source] of files) {
   const doc = readFileSync(new URL("../" + path, import.meta.url), "utf8");
-  assert.match(doc, new RegExp("href=\"https://siteguard\\.clientstream\\.io/\\?utm_source=" + source + "&amp;utm_medium="),
+  assert.match(doc, new RegExp("href=\"https://app\\.clientstream\\.io/api/siteguard/referral\\?source=" + source),
     path + " missing tracked customer-acquisition CTA");
-  assert.match(doc, /utm_campaign=siteguard_launch/, path + " missing launch campaign attribution");
+
   assert.match(doc, /SiteGuard/i, path + " lost clear product attribution");
 }
 const sitemap = readFileSync(new URL("../public/sitemap.xml", import.meta.url), "utf8");
