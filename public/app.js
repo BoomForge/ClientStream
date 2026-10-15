@@ -773,9 +773,9 @@ function updateLogoPreview(source) {
 $("#business-logo-file").addEventListener("change", async (event) => {
   const file = event.currentTarget.files?.[0];
   if (!file) return;
-  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 100_000) {
+  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 300_000) {
     event.currentTarget.value = "";
-    toast("Choose a PNG or JPEG smaller than 100 KB.", true);
+    toast("Choose a PNG or JPEG up to 300 KB.", true);
     return;
   }
   try {
