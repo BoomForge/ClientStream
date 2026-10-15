@@ -2,8 +2,6 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "purple-cell-493f",
   "compatibility_date": "2026-10-07",
-  "routes": [{"pattern": "clientstream.io/*", "zone_name": "clientstream.io"}],
-  "workers_dev": true,
   "assets": {
     "directory": "./marketing",
     "not_found_handling": "404-page"
