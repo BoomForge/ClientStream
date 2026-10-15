@@ -21,7 +21,6 @@ concurrency:
 jobs:
   provision:
     runs-on: ubuntu-latest
-    environment: paypal-setup
     env:
       PAYPAL_SETUP_MODE: ${{ inputs.mode }}
       PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
