@@ -8,6 +8,7 @@ on:
       - marketing/siteguard.html
       - marketing/robots.txt
       - marketing/sitemap.xml
+      - marketing/a94f813e21c847d6a986ebc34615f0d2.txt
       - .github/workflows/deploy-marketing.yml
   workflow_dispatch:
 
@@ -41,3 +42,25 @@ jobs:
           curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/
       - name: Deploy marketing site
         run: npx wrangler deploy --config wrangler.marketing.jsonc
+      - name: Inform IndexNow of newly published ClientStream and SiteGuard pages
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="a94f813e21c847d6a986ebc34615f0d2"
+          received="$(curl --fail --silent --show-error --location --max-time 20 "https://clientstream.io/$key.txt")"
+          test "$received" = "$key"
+          python3 - <<'PY'
+          import json, urllib.request
+          data = json.dumps({
+             "host": "clientstream.io",
+             "key": "a94f813e21c847d6a986ebc34615f0d2",
+             "urlList": ["https://clientstream.io/", "https://clientstream.io/siteguard.html"]
+          }).encode("utf-8")
+          request = urllib.request.Request("https://api.indexnow.org/indexnow", data=data,
+              headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": "ClientStream-SiteGuard-Discovery/1.0"},
+              method="POST")
+          with urllib.request.urlopen(request,timeout=20) as result:
+              if result.status not in (200,202): raise RuntimeError("IndexNow rejected submission")
+              print("INDEXNOW SUBMISSION ACCEPTED: HTTP", result.status)
+          PY
