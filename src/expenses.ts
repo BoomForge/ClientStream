@@ -80,6 +80,7 @@ export async function updateExpense(request: Request, env: Env): Promise<Respons
   if (!description) return json({ error: "Expense description is required." }, { status: 400 });
   if (amountCents === null || amountCents <= 0) return json({ error: "Expense amount must be greater than zero." }, { status: 400 });
   if (!incurredAt || !/^\d{4}-\d{2}-\d{2}$/.test(incurredAt) ||
+      Number.isNaN(Date.parse(incurredAt + "T00:00:00Z")) ||
       new Date(incurredAt + "T00:00:00Z").toISOString().slice(0,10) !== incurredAt)
     return json({ error: "Choose a valid expense date." }, { status: 400 });
   const category = "category" in body ? textValue(body.category,100) : existing.category;
