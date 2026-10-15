@@ -4,12 +4,11 @@ export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   APP_ENV?: string;
-  SQUARE_WEBHOOK_SIGNATURE_KEY?: string;
-  SQUARE_WEBHOOK_URL?: string;
-  SQUARE_ACCESS_TOKEN?: string;
-  SQUARE_LOCATION_ID?: string;
-  SQUARE_PRO_PLAN_VARIATION_ID?: string;
-  SQUARE_ENVIRONMENT?: "sandbox" | "production";
+  PAYPAL_CLIENT_ID?: string;
+  PAYPAL_CLIENT_SECRET?: string;
+  PAYPAL_PLAN_ID?: string;
+  PAYPAL_WEBHOOK_ID?: string;
+  PAYPAL_ENVIRONMENT?: "sandbox" | "live";
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   AI?: Ai;
