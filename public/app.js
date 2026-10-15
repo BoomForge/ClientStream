@@ -134,14 +134,16 @@ $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () =>
 
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  // currentTarget is reset to null by the browser after dispatch; capture it before awaiting.
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   try {
     await api("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email: form.get("email"), password: form.get("password") })
     });
     state.me = await api("/api/me");
-    event.currentTarget.reset();
+    formElement.reset();
     await showApp();
   } catch (error) {
     toast(error.message, true);
@@ -150,7 +152,9 @@ $("#login-form").addEventListener("submit", async (event) => {
 
 $("#register-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  // currentTarget is reset to null by the browser after dispatch; capture it before awaiting.
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   try {
     await api("/api/auth/register", {
       method: "POST",
@@ -162,7 +166,7 @@ $("#register-form").addEventListener("submit", async (event) => {
       })
     });
     state.me = await api("/api/me");
-    event.currentTarget.reset();
+    formElement.reset();
     await showApp();
     toast("Your ClientStream account is ready.");
   } catch (error) {
