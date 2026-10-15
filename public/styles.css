@@ -490,3 +490,46 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   margin-top: 2px;
 }
 #income-form input[readonly] { background: #f1f5f9; }
+
+/* Visible, keyboard-reachable invoice matches beneath Add Income search. */
+.income-search-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: stretch; }
+.income-search-row input { min-width: 0; }
+.income-search-row button { white-space: nowrap; }
+.income-invoice-results {
+  display: grid;
+  gap: 3px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 5px 15px rgba(13,42,73,.07);
+}
+.income-invoice-results.hidden { display: none !important; }
+.income-invoice-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid #edf2f8; }
+.income-invoice-result:last-child { border-bottom: 0; }
+.income-invoice-option {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.income-invoice-option:hover, .income-invoice-option:focus-visible { background: #e9f5fd; outline: 2px solid var(--sky); outline-offset: -2px; }
+.income-invoice-draft { padding: 10px 12px; background: #fcfcfd; }
+.income-invoice-draft > span { flex-basis: 100%; font-weight: 700; }
+.income-invoice-draft small { flex: 1; font-size: .77rem; color: var(--muted); }
+.income-invoice-empty { padding: 12px; color: var(--muted); line-height: 1.5; }
+.income-selected { margin: 0; padding: 10px; border-radius: 8px; background: #e7f5fd; color: var(--navy); font-weight: 700; overflow-wrap: anywhere; }
+@media(max-width: 470px) {
+  .income-search-row { grid-template-columns: 1fr; }
+  .income-search-row button { width: 100%; }
+}
