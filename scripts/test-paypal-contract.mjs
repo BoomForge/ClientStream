@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { planMatchesClientStream, subscriptionStatus, approvedPayPalUrl } from "../src/paypal-contract.ts";
+import { planMatchesClientStream, subscriptionStatus, approvedPayPalUrl, hasConfirmedProPayment } from "../src/paypal-contract.ts";
 
 const valid = {
   id: "P-CLIENTSTREAM",
@@ -33,3 +33,15 @@ for (const url of ["https://paypal.com.evil.example/checkout", "http://www.paypa
   assert.equal(approvedPayPalUrl(url, "live"), null);
 }
 console.log("PayPal recurring plan, status, and trusted approval URL rules passed.");
+
+const paid = {
+  id: "I-123", status: "ACTIVE",
+  billing_info: { last_payment: { time: new Date().toISOString(),
+    amount: { value: "9.99", currency_code: "AUD" } } }
+};
+assert.equal(hasConfirmedProPayment(paid), true);
+assert.equal(hasConfirmedProPayment({ ...paid, billing_info: {} }), false);
+assert.equal(hasConfirmedProPayment({ ...paid, status: "APPROVED" }), false);
+assert.equal(hasConfirmedProPayment({ ...paid, billing_info: { last_payment: {
+  time: new Date().toISOString(), amount: { value: "9.99", currency_code: "USD" }
+} } }), false);
