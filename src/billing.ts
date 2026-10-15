@@ -164,6 +164,7 @@ export async function reconcileBilling(request: Request, env: Env): Promise<Resp
   const business = requireBusiness(context);
   if (business instanceof Response) return business;
   if (business.role !== "owner") return json({ error: "Only the business owner can manage billing." }, { status: 403 });
+  if (!context.user.emailVerified) return json({ error: "Verify your email before managing your Pro subscription.", code: "EMAIL_VERIFICATION_REQUIRED" }, { status: 403 });
   if (!paypalConfig(env)) return json({ error: "PayPal subscriptions are not configured yet." }, { status: 503 });
 
   const row = await linked(env, business.id);
