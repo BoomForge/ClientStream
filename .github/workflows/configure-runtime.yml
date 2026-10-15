@@ -1,6 +1,12 @@
 name: Configure ClientStream Runtime
 
 on:
+  # Re-run automatically when the configuration workflow itself is repaired.
+  # Manual dispatch remains available after adding or rotating email credentials.
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/configure-runtime.yml
   workflow_dispatch:
 
 permissions:
@@ -33,6 +39,19 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Require production transactional email secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$RESEND_API_KEY" ]]; then
+            echo "::error::RESEND_API_KEY is missing from GitHub Actions secrets. Create an API key in Resend and add it to this repository before rerunning this workflow."
+            exit 1
+          fi
+          if [[ -z "$EMAIL_FROM" ]]; then
+            echo "::error::EMAIL_FROM is missing from GitHub Actions secrets. Add a Resend-verified sender, for example ClientStream <notifications@mail.clientstream.io>, before rerunning."
+            exit 1
+          fi
+
       - name: Push configured runtime values
         shell: bash
         run: |
