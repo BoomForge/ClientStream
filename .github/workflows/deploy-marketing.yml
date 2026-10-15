@@ -6,6 +6,8 @@ on:
     paths:
       - marketing/index.html
       - marketing/siteguard.html
+      - marketing/robots.txt
+      - marketing/sitemap.xml
       - .github/workflows/deploy-marketing.yml
   workflow_dispatch:
 
