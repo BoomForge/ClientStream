@@ -22,7 +22,7 @@ export async function exportAccountData(request: Request, env: Env): Promise<Res
     subscription
   ] = await Promise.all([
     env.DB.prepare(
-      "SELECT id, name, slug, plan, timezone, currency, business_email, business_phone, business_address, abn, google_review_url, gst_registered, created_at, updated_at FROM businesses WHERE id = ? LIMIT 1"
+      "SELECT id, name, slug, plan, timezone, currency, business_email, business_phone, business_address, abn, google_review_url, gst_registered, contact_name, website_url, logo_data_url, bank_account_name, bank_bsb, bank_account_number, payment_instructions, created_at, updated_at FROM businesses WHERE id = ? LIMIT 1"
     ).bind(business.id).first(),
     env.DB.prepare(
       "SELECT id, name, company, email, phone, address, notes, status, created_at, updated_at FROM clients WHERE business_id = ? ORDER BY created_at ASC"
