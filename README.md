@@ -86,7 +86,7 @@ External configuration still required before the public commercial launch:
 4. PayPal Live REST API credentials, ClientStream A$9.99/month AUD plan and registered webhook ID.
 5. A backup-encryption password to activate encrypted weekly D1 exports.
 
-Do not commit Cloudflare, Resend, Square or backup secrets.
+Do not commit Cloudflare, Resend, PayPal or backup secrets.
 
 ## D1
 
@@ -114,7 +114,7 @@ The workflow **Deploy ClientStream Marketing** is manual-only and targets the ex
 
 ## Data and privacy
 
-Account owners can export business data from Settings. Permanent deletion requires owner access, the current password and explicit `DELETE` confirmation; deletion is blocked while an active Square subscription exists.
+Account owners can export business data from Settings. Permanent deletion requires owner access, the current password and explicit `DELETE` confirmation; deletion is blocked while an active PayPal subscription exists.
 
 Public policy pages are available at:
 
