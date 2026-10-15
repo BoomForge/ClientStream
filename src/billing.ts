@@ -68,7 +68,7 @@ export async function billingStatus(request: Request, env: Env): Promise<Respons
 
   return json({
     provider: "paypal",
-    configured: Boolean(paypalConfig(env)),
+    configured: Boolean(paypalConfig(env)?.webhookId),
     environment: env.PAYPAL_ENVIRONMENT === "sandbox" ? "sandbox" : env.PAYPAL_ENVIRONMENT === "live" ? "live" : null,
     businessPlan: business.plan,
     subscription: row ? {
@@ -93,7 +93,7 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
     error: "Verify your email before upgrading your plan.", code: "EMAIL_VERIFICATION_REQUIRED"
   }, { status: 403 });
   const config = paypalConfig(env);
-  if (!config) return json({ error: "PayPal subscriptions are not configured yet.", code: "BILLING_NOT_CONFIGURED" }, { status: 503 });
+  if (!config?.webhookId) return json({ error: "PayPal subscriptions and signed webhooks are not configured yet.", code: "BILLING_NOT_CONFIGURED" }, { status: 503 });
   if (business.plan === "pro") return json({ error: "This business is already on Pro." }, { status: 409 });
   // Prevent duplicate subscriptions from multiple clicks or prior pending checkout.
   const previous = await linked(env, business.id);
