@@ -114,7 +114,7 @@ export async function deleteAccount(request: Request, env: Env): Promise<Respons
   }
 
   const activeSubscription = await env.DB.prepare(
-    "SELECT provider_subscription_id FROM subscriptions WHERE business_id = ? AND provider = 'square' AND status IN ('active','pending','past_due') LIMIT 1"
+    "SELECT provider_subscription_id FROM subscriptions WHERE business_id = ? AND provider IN ('paypal', 'square') AND status IN ('active','pending','past_due') LIMIT 1"
   ).bind(business.id).first<{ provider_subscription_id: string | null }>();
 
   if (activeSubscription) {
