@@ -59,13 +59,13 @@ for (const name of [
   "income-invoice-results", "income-invoice-search", "income-invoice-id",
   "income-invoice-balance", "income-dialog", "income-form", "income-partial-group",
   "income-description-group", "income-selected", "income-invoice-picker",
-  "income-entry-hint", "income-dialog-title", "save-income-button", "income-show-invoices"
+  "income-entry-hint", "income-dialog-title", "save-income-button", "income-show-invoices", "income-partial-payment"
 ]) els.set("#" + name, new Node());
 const form = els.get("#income-form");
 form.elements = {
   id: new Node("input"), invoiceId: els.get("#income-invoice-id"),
   description: new Node("input"), amount: new Node("input"),
-  partialPayment: new Node("input"), receivedAt: new Node("input"),
+  partialPayment: els.get("#income-partial-payment"), receivedAt: new Node("input"),
   notes: new Node("input")
 };
 const dialog = els.get("#income-dialog");
@@ -130,11 +130,33 @@ assert.ok(row, "Search result must have a clickable option");
 await row.click();
 assert.equal(form.elements.invoiceId.value, "sent-id", "Selecting invoice must set form invoice ID");
 assert.equal(form.elements.amount.value, "80.00", "Invoice remaining amount should autopopulate");
+assert.equal(form.elements.amount.readOnly, false, "Selected invoices must not lock the amount input");
 assert.equal(list.classList.contains("hidden"), true, "List should close after selection");
-form.elements.partialPayment.checked = true;
-ui.partial();
-assert.equal(form.elements.amount.readOnly, false, "Partial selection should unlock the amount");
+// Simulate the real checkbox change event, not a direct test-only function call.
+const partialCheckbox = els.get("#income-partial-payment");
+partialCheckbox.checked = true;
+assert.equal(typeof partialCheckbox.handlers.change, "function", "Partial checkbox change handler not registered");
+partialCheckbox.handlers.change();
+assert.equal(form.elements.amount.readOnly, false, "Checking Partial payment must leave amount editable");
+assert.equal(form.elements.amount.disabled, false, "Checking Partial payment must not disable the amount");
+assert.equal(form.elements.amount.focused, true, "Checking Partial payment should focus the amount");
 assert.equal(form.elements.amount.max, "79.99", "Partial payment must be less than full amount");
+form.elements.amount.value = "25.00";
+// Search requests may complete late. Re-rendering the same invoice must not
+// reset its partial flag, re-lock the input, or overwrite what was just typed.
+els.get("#income-invoice-search").value = "Builder";
+await ui.search();
+assert.equal(partialCheckbox.checked, true, "Late search refresh must preserve partial selection");
+assert.equal(form.elements.amount.value, "25.00", "Late search refresh must preserve typed amount");
+assert.equal(form.elements.amount.readOnly, false, "Late search refresh must not re-lock input");
+partialCheckbox.checked = false;
+partialCheckbox.handlers.change();
+assert.equal(form.elements.amount.value, "80.00", "Unchecking Partial payment should restore full balance");
+assert.equal(form.elements.amount.readOnly, false, "Full payment amount remains editable");
+partialCheckbox.checked = true;
+partialCheckbox.handlers.change();
+form.elements.amount.value = "12.00";
+assert.equal(form.elements.amount.value, "12.00", "Partial payment must accept the customer's entered amount");
 
 els.get("#income-invoice-search").value = "unknown";
 await ui.search();
