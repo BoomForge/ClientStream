@@ -4,9 +4,9 @@ ClientStream is a Cloudflare-native SaaS for Australian sole traders and small b
 
 ## Related service: SiteGuard website monitoring
 
-[![SiteGuard website monitoring promotional banner — illustration only](https://raw.githubusercontent.com/BoomForge/ClientStream/main/public/siteguard-banner.jpg)](https://siteguard.clientstream.io/)
+[![SiteGuard by ClientStream](https://siteguard.clientstream.io/logo.png)](https://siteguard.clientstream.io/)
 
-ClientStream also offers [**SiteGuard**](https://siteguard.clientstream.io/) for small businesses wanting independent website availability checks, incident/recovery email alerts, HTTPS certificate visibility and a simple dashboard. SiteGuard monitors up to three owner-authorised websites for **A$29 every 30 days** through Whop. Monitoring operates from one probe location; it is not an uptime guarantee.
+ClientStream also offers [**SiteGuard**](https://siteguard.clientstream.io/) for small businesses wanting independent website availability checks, incident/recovery email alerts, HTTPS certificate visibility and a simple dashboard. SiteGuard monitors up to three owner-authorised websites for **A$9.99 every 30 days** through Whop. Monitoring operates from one probe location; it is not an uptime guarantee.
 
 **[Explore SiteGuard and subscribe](https://siteguard.clientstream.io/)** · [Read the practical website monitoring guide](https://app.clientstream.io/siteguard.html) · [Free technical checklist](docs/siteguard-website-monitoring-guide.md)
 
