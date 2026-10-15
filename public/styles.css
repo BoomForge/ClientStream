@@ -55,6 +55,10 @@ textarea { resize: vertical; }
 .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
 .nav-item.active { background: rgba(255,255,255,.13); color: #fff; box-shadow: inset 3px 0 var(--sky); }
 .sidebar-bottom { margin-top: auto; display: grid; gap: 8px; }
+.siteguard-sidebar-link { display:block; margin:0 10px 5px; padding:12px 13px; border-radius:10px; background:rgba(14,165,233,.15); border:1px solid rgba(125,211,252,.24); color:#efffff; font-size:.84rem; font-weight:800; text-decoration:none; line-height:1.35; }
+.siteguard-sidebar-link small { display:block; margin-top:5px; color:#bbd5e4; font-size:.71rem; font-weight:500; }
+.siteguard-sidebar-link:hover { border-color:#7dd3fc; background:rgba(14,165,233,.24); }
+
 .plan-chip { margin: 0 10px 8px; width: fit-content; padding: 6px 9px; border-radius: 999px; background: rgba(14,165,233,.18); color: #cdefff; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
 .workspace { min-width: 0; padding: 34px clamp(20px,4vw,58px) 64px; }
 .workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
