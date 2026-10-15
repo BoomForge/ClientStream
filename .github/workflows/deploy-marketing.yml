@@ -43,7 +43,9 @@ jobs:
           curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/
       - name: Deploy marketing site
         run: npx wrangler deploy --config wrangler.marketing.jsonc
-      - name: Verify actual SiteGuard sales and attributed referral URLs
+      - name: Verify actual SiteGuard sales origin without racing app deployment
+        env:
+          SITEGUARD_ONLY_ORIGIN: "true"
         run: node scripts/probe-siteguard-sales.mjs
       - name: Verify publicly reachable marketing Worker
         shell: bash

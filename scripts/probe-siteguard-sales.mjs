@@ -2,9 +2,9 @@
 // Uses only public GET requests; never starts a checkout or sends user data.
 const urls = [
   "https://siteguard.clientstream.io/",
-  "https://siteguard.clientstream.io/?utm_source=clientstream_website&utm_medium=owned_referral&utm_campaign=siteguard_launch"
+  "https://app.clientstream.io/api/siteguard/referral?source=clientstream_website&probe=1"
 ];
-for (const url of urls) {
+for (const url of (process.env.SITEGUARD_ONLY_ORIGIN === "true" ? urls.slice(0, 1) : urls)) {
   let succeeded = false;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -22,7 +22,7 @@ for (const url of urls) {
       const body = await response.text();
       if (body.length < 120) throw Error("Sales funnel returned an unexpectedly short page.");
       console.log("SITEGUARD FUNNEL VERIFIED: HTTP", response.status, "URL", location.origin + location.pathname,
-        "entry", url.includes("utm_source") ? "campaign-tagged" : "canonical");
+        "entry", url.includes("/api/siteguard/referral") ? "campaign-tagged" : "canonical");
       succeeded = true;
       break;
     } catch (error) {
