@@ -1625,18 +1625,130 @@ async function loadIncome() {
   } catch (error) { toast(error.message, true); }
 }
 
+let incomeInvoiceResults = [];
+let incomeInvoiceRequest = 0;
+let incomeInvoiceSearchTimer = null;
+
+// The server searches ALL eligible invoices (not just the 500 newest invoices
+// returned by the main table), and only returns invoices still outstanding.
+async function refreshIncomeInvoiceChoices() {
+  const select = $("#income-invoice-select");
+  const query = $("#income-invoice-search").value.trim();
+  const requestId = ++incomeInvoiceRequest;
+  select.disabled = true;
+  try {
+    const data = await api("/api/income/available-invoices?q=" + encodeURIComponent(query));
+    if (requestId !== incomeInvoiceRequest || !$("#income-dialog").open) return;
+    incomeInvoiceResults = data.invoices || [];
+    const options = [];
+    const other = document.createElement("option");
+    other.value = "";
+    other.textContent = "Other income — not linked to an invoice";
+    options.push(other);
+    for (const invoice of incomeInvoiceResults) {
+      const option = document.createElement("option");
+      option.value = invoice.id;
+      option.textContent = invoice.number + " · " + invoice.client_name + " · " +
+        money(invoice.outstanding_cents) + " outstanding";
+      options.push(option);
+    }
+    select.replaceChildren(...options);
+    select.value = "";
+    $("#income-invoice-balance").textContent = incomeInvoiceResults.length
+      ? "Select an outstanding invoice, or leave Other income selected."
+      : (query ? "No matching outstanding invoices." : "No outstanding issued invoices. You can still add other income.");
+    updateIncomeInvoiceSelection();
+  } catch (error) {
+    if (requestId === incomeInvoiceRequest) {
+      select.replaceChildren();
+      incomeInvoiceResults = [];
+      updateIncomeInvoiceSelection();
+      toast("Unable to search invoices: " + error.message, true);
+    }
+  } finally {
+    if (requestId === incomeInvoiceRequest) select.disabled = false;
+  }
+}
+
+function updateIncomeInvoiceSelection() {
+  const form = $("#income-form");
+  const invoice = incomeInvoiceResults.find((i) => i.id === form.elements.invoiceId.value);
+  const selected = Boolean(invoice);
+  const partialGroup = $("#income-partial-group");
+  partialGroup.classList.toggle("hidden", !selected);
+  $("#income-description-group").classList.toggle("hidden", selected);
+  form.elements.description.required = !selected;
+  form.elements.description.disabled = selected;
+  if (!selected) {
+    form.elements.partialPayment.checked = false;
+    form.elements.amount.readOnly = false;
+    form.elements.amount.removeAttribute("max");
+    $("#income-invoice-balance").textContent = incomeInvoiceResults.length
+      ? "Leave Other income selected for a payment not linked to an invoice."
+      : "No invoice selected. Income will not change any invoice balance.";
+    return;
+  }
+  const outstanding = Number(invoice.outstanding_cents);
+  form.elements.partialPayment.checked = false;
+  form.elements.amount.readOnly = true;
+  form.elements.amount.max = (outstanding / 100).toFixed(2);
+  form.elements.amount.value = (outstanding / 100).toFixed(2);
+  $("#income-invoice-balance").textContent =
+    invoice.number + " · " + invoice.client_name + " · " +
+    money(outstanding) + " outstanding. Full payment will settle this invoice.";
+}
+
+function updateIncomePartialPayment() {
+  const form = $("#income-form");
+  const invoice = incomeInvoiceResults.find((i) => i.id === form.elements.invoiceId.value);
+  if (!invoice) return;
+  const partial = form.elements.partialPayment.checked;
+  const outstanding = Number(invoice.outstanding_cents);
+  form.elements.amount.readOnly = !partial;
+  form.elements.amount.max = (partial ? Math.max(0, outstanding - 1) : outstanding).toFixed(2);
+  form.elements.amount.value = partial ? "" : (outstanding / 100).toFixed(2);
+  form.elements.amount.placeholder = partial ? "Less than " + money(outstanding) : "";
+  $("#income-invoice-balance").textContent = partial
+    ? "Record less than " + money(outstanding) + ". The remaining balance stays open and searchable."
+    : "Full payment: " + money(outstanding) + ". The invoice will leave the search list once settled.";
+}
+
 function openIncomeDialog(item = null) {
   const form = $("#income-form");
   form.reset();
   form.elements.id.value = item?.id || "";
   form.elements.description.value = item?.description || "";
+  form.elements.description.disabled = false;
+  form.elements.description.required = true;
+  form.elements.amount.readOnly = false;
+  form.elements.amount.removeAttribute("max");
   form.elements.amount.value = item ? (item.amount_cents / 100).toFixed(2) : "";
   form.elements.receivedAt.value = item?.paid_at?.slice(0,10) || new Date().toISOString().slice(0,10);
   form.elements.notes.value = item?.notes || "";
   $("#income-dialog-title").textContent = item ? "Edit income" : "Add income";
   $("#save-income-button").textContent = item ? "Save changes" : "Add income";
+  $("#income-invoice-picker").classList.toggle("hidden", Boolean(item));
+  $("#income-entry-hint").classList.toggle("hidden", Boolean(item));
+  incomeInvoiceResults = [];
+  ++incomeInvoiceRequest;
+  $("#income-invoice-search").value = "";
+  $("#income-invoice-select").replaceChildren(new Option("Other income — not linked to an invoice", ""));
+  $("#income-invoice-select").value = "";
+  $("#income-partial-group").classList.add("hidden");
   $("#income-dialog").showModal();
+  if (!item) void refreshIncomeInvoiceChoices();
 }
+
+$("#income-invoice-search").addEventListener("input", () => {
+  clearTimeout(incomeInvoiceSearchTimer);
+  // Clear the selected invoice before searching again so a stale selection
+  // cannot silently allocate cash to a different customer.
+  $("#income-invoice-select").value = "";
+  updateIncomeInvoiceSelection();
+  incomeInvoiceSearchTimer = setTimeout(refreshIncomeInvoiceChoices, 180);
+});
+$("#income-invoice-select").addEventListener("change", updateIncomeInvoiceSelection);
+$("#income-partial-payment").addEventListener("change", updateIncomePartialPayment);
 
 function renderIncome() {
   $("#income-empty").classList.toggle("hidden", state.income.length > 0);
@@ -1673,19 +1785,43 @@ $("#income-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   const id = String(form.get("id") || "");
+  const invoiceId = !id ? String(form.get("invoiceId") || "") : "";
+  const amountCents = Math.round(Number(form.get("amount")) * 100);
+  const selected = incomeInvoiceResults.find((invoice) => invoice.id === invoiceId);
+  const partialPayment = Boolean(form.get("partialPayment"));
   try {
-    await api(id ? "/api/income/" + encodeURIComponent(id) : "/api/income", {
-      method: id ? "PATCH" : "POST",
-      body: JSON.stringify({
-        description: form.get("description"),
-        amountCents: Math.round(Number(form.get("amount")) * 100),
-        receivedAt: form.get("receivedAt"),
-        notes: form.get("notes")
-      })
-    });
+    if (invoiceId) {
+      if (!selected) throw new Error("Select an outstanding invoice from the current search results.");
+      if (!Number.isInteger(amountCents) || amountCents <= 0) throw new Error("Enter a valid payment amount.");
+      if (partialPayment && amountCents >= selected.outstanding_cents)
+        throw new Error("Partial payment must be below the remaining invoice balance.");
+      if (!partialPayment && amountCents !== selected.outstanding_cents)
+        throw new Error("Untick Partial payment to settle the full balance, or tick it to enter a smaller amount.");
+      await api("/api/invoices/" + encodeURIComponent(invoiceId) + "/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          amountCents,
+          partialPayment,
+          receivedAt: form.get("receivedAt"),
+          notes: form.get("notes")
+        })
+      });
+    } else {
+      await api(id ? "/api/income/" + encodeURIComponent(id) : "/api/income", {
+        method: id ? "PATCH" : "POST",
+        body: JSON.stringify({
+          description: form.get("description"),
+          amountCents,
+          receivedAt: form.get("receivedAt"),
+          notes: form.get("notes")
+        })
+      });
+    }
     $("#income-dialog").close();
-    await Promise.all([loadIncome(), loadDashboard(), loadReport()]);
-    toast(id ? "Income updated." : "Income recorded.");
+    ++incomeInvoiceRequest;
+    await Promise.all([loadIncome(), loadInvoices(), loadDashboard(), loadReport(), loadToday()]);
+    toast(invoiceId ? (partialPayment ? "Partial payment recorded. Invoice remains outstanding." : "Invoice paid in full and removed from the available list.") :
+      (id ? "Income updated." : "Income recorded."));
   } catch (error) { toast(error.message, true); }
 });
 
