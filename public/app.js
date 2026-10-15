@@ -1507,7 +1507,7 @@ function renderInvoices() {
       }));
     }
 
-    if (outstanding > 0 && invoice.status !== "void") {
+    if (outstanding > 0 && !["draft", "void"].includes(invoice.status)) {
       actions.append(button("Payment", () => openPaymentDialog(invoice)));
     }
 
