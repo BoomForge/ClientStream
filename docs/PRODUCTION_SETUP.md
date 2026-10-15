@@ -39,6 +39,10 @@ Cloudflare Custom Domains create the required DNS record and certificate automat
 
 ClientStream uses **Subscriptions v1**, not the Pixelwolf Store's one-time Orders v2 API. The existing Pixelwolf Store Live PayPal Business REST app credentials may be reused, but Pixelwolf's Hostinger-protected private settings are not shared with the Cloudflare Worker.
 
+**Quickest route (automated provisioning):** Copy the Pixelwolf Store's Live PayPal REST app **Client ID** and **Secret** from PayPal Developer Dashboard into this ClientStream GitHub repository's Actions secrets `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` (never chat, screenshots or source). In GitHub Actions, run **Provision ClientStream PayPal**, choose `sandbox` with Sandbox credentials first or `live` with Live credentials after acceptance. The workflow reuses or creates the exact AUD 9.99/month ClientStream plan, registers the webhook, and pushes all PayPal Worker secrets securely into Cloudflare. It fails rather than enabling an incorrect plan or webhook. Only the PayPal credentials need copying; it does NOT read Hostinger's private Store configuration. Do not switch a live service back to sandbox while genuine subscribers are active.
+
+**Manual alternative**, if the provisioning workflow cannot run:
+
 1. In PayPal Developer Dashboard, create a **ClientStream Pro** catalog product and an **ACTIVE** subscription billing plan. The regular billing cycle must be MONTH / interval 1 / total_cycles 0, with a fixed price of **AUD 9.99**. No trial and no setup fee. The Worker refuses checkout if the real provider plan differs.
 2. In that same REST app, register a webhook at `https://app.clientstream.io/api/webhooks/paypal` for `BILLING.SUBSCRIPTION.CREATED`, `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `PAYMENT.SALE.COMPLETED`, `PAYMENT.SALE.REFUNDED` and `PAYMENT.SALE.REVERSED`. Obtain the distinct PayPal **Webhook ID**, not the Client ID.
 3. In GitHub repository Settings > Secrets and variables > Actions, securely set:
