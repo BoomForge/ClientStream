@@ -1867,6 +1867,10 @@ $("#income-show-invoices").addEventListener("click", () => {
   $("#income-invoice-search").focus();
 });
 
+// Ensure the checkbox actually unlocks the amount; the previous selector rebuild
+// accidentally omitted this event binding.
+$("#income-partial-payment").addEventListener("change", updateIncomePartialPayment);
+
 function renderIncome() {
   $("#income-empty").classList.toggle("hidden", state.income.length > 0);
   $("#income-body").replaceChildren(...state.income.map((item) => {
