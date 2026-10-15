@@ -23,6 +23,7 @@ import { deleteAccount, exportAccountData } from "./account";
 import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } from "./security";
 import { runMaintenance } from "./maintenance";
 import { DEPLOY_REVISION } from "./revision";
+import { siteguardReferral } from "./siteguard-referrals";
 
 const VERSION = "0.9.0-launch-hardening";
 
@@ -42,6 +43,9 @@ async function api(request: Request, env: Env): Promise<Response> {
     const limited = await enforceMutationRateLimit(request, env);
     if (limited) return limited;
   }
+
+  if ((request.method === "GET" || request.method === "HEAD") &&
+      path === "/api/siteguard/referral") return siteguardReferral(request, env);
 
   if (request.method === "GET" && path === "/api/health") {
     // A D1 binding alone does not prove that production queries are succeeding.
