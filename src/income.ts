@@ -36,6 +36,28 @@ export async function listIncome(request: Request, env: Env): Promise<Response> 
   return json({ income: rows.results ?? [] });
 }
 
+// Only issued invoices with an outstanding balance can be assigned income.
+// Search on the server, so Pro customers with more than 500 invoices can find
+// older receivables rather than relying on the dashboard's recent-invoice list.
+export async function availableIncomeInvoices(request: Request, env: Env): Promise<Response> {
+  const context = await requireAuth(request, env);
+  if (context instanceof Response) return context;
+  const business = requireBusiness(context);
+  if (business instanceof Response) return business;
+  const q = (new URL(request.url).searchParams.get("q") || "").trim().slice(0, 100);
+  const result = await env.DB.prepare(
+    "SELECT i.id, i.number, i.status, c.name AS client_name, " +
+    "(i.total_cents - i.amount_paid_cents) AS outstanding_cents " +
+    "FROM invoices i JOIN clients c ON c.id = i.client_id " +
+    "WHERE i.business_id = ? AND i.status IN ('sent','part_paid','overdue') " +
+    "AND i.total_cents > i.amount_paid_cents " +
+    "AND (? = '' OR instr(lower(i.number),lower(?)) > 0 " +
+    "OR instr(lower(c.name),lower(?)) > 0) " +
+    "ORDER BY i.created_at DESC LIMIT 150"
+  ).bind(business.id, q, q, q).all();
+  return json({ invoices: result.results ?? [] });
+}
+
 export async function createIncome(request: Request, env: Env): Promise<Response> {
   if (!mutationOriginIsAllowed(request)) return json({ error: "Origin not allowed." }, { status: 403 });
   const context = await requireAuth(request, env);
