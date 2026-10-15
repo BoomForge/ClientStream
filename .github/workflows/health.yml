@@ -18,3 +18,5 @@ jobs:
         env:
           CLIENTSTREAM_HEALTH_URL: ${{ vars.CLIENTSTREAM_HEALTH_URL }}
         run: node scripts/probe-health.mjs
+      - name: Check unattended SiteGuard sales funnel and owned referral path
+        run: node scripts/probe-siteguard-sales.mjs
