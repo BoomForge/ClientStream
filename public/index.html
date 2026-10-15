@@ -64,6 +64,7 @@
         <button class="nav-item" data-view="jobs">Jobs</button>
         <button class="nav-item" data-view="quotes">Quotes</button>
         <button class="nav-item" data-view="invoices">Invoices</button>
+        <button class="nav-item" data-view="income">Income</button>
         <button class="nav-item" data-view="expenses">Expenses</button>
         <button class="nav-item" data-view="reports">Reports</button>
         <button class="nav-item" data-view="smart">Smart Write</button>
@@ -168,6 +169,18 @@
         </div>
       </section>
 
+      <section class="view" data-page="income">
+        <div class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">MONEY RECEIVED</p><h3>Income</h3></div>
+            <button class="primary small" id="add-income">Add income</button>
+          </div>
+          <p class="finance-hint">Payments recorded on invoices appear here automatically. Add other income separately; don't record an invoice payment twice.</p>
+          <div class="table-wrap"><table><thead><tr><th>Source</th><th>Reference / client</th><th>Date received</th><th>Amount</th><th></th></tr></thead><tbody id="income-body"></tbody></table></div>
+          <div class="empty hidden" id="income-empty">No income recorded yet.</div>
+        </div>
+      </section>
+
       <section class="view" data-page="expenses">
         <div class="panel">
           <div class="panel-head">
@@ -191,6 +204,7 @@
             <button class="primary small" type="submit">Update report</button>
           </form>
           <div id="report-metrics" class="metric-grid report-metrics"></div>
+          <div class="cashflow-panel"><h4>Income received versus expenses by month</h4><div id="cashflow-chart" class="cashflow-chart"></div></div>
           <p class="report-note" id="report-note"></p>
         </div>
       </section>
@@ -384,9 +398,25 @@
     </form>
   </dialog>
 
+  <dialog id="income-dialog">
+    <form id="income-form" method="dialog" class="dialog-form">
+      <div class="dialog-head"><h3 id="income-dialog-title">Add income</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <input type="hidden" name="id">
+      <label>Description<input name="description" required maxlength="240" placeholder="Payment source or service"></label>
+      <div class="two-col">
+        <label>Amount received (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
+        <label>Date received<input name="receivedAt" type="date" required></label>
+      </div>
+      <label>Notes<textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+      <p class="hint">For invoice-related payments, use Invoices → Payment instead. This prevents double-counting income.</p>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit" id="save-income-button">Add income</button></div>
+    </form>
+  </dialog>
+
   <dialog id="expense-dialog">
     <form id="expense-form" method="dialog" class="dialog-form">
-      <div class="dialog-head"><h3>Add expense</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <div class="dialog-head"><h3 id="expense-dialog-title">Add expense</h3><button type="button" class="icon-button close-dialog">×</button></div>
+       <input type="hidden" name="id">
       <label>Description<input name="description" required maxlength="240"></label>
       <div class="two-col">
         <label>Category<input name="category" maxlength="100"></label>
@@ -394,7 +424,7 @@
       </div>
       <label>Date<input name="incurredAt" type="date" required></label>
       <label>Notes<textarea name="notes" rows="3"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add expense</button></div>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit" id="save-expense-button">Add expense</button></div>
     </form>
   </dialog>
 
