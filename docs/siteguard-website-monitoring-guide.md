@@ -29,7 +29,7 @@ A failure alert helps you investigate early. A recovery alert tells you when the
 
 [**SiteGuard**](https://siteguard.clientstream.io/) is a lightweight website-monitoring service built for small businesses. It offers a customer dashboard, incident/recovery email alerts, response-time and SSL-certificate visibility, and monitoring for up to **three owner-authorised websites**.
 
-The advertised subscription is **A$29 every 30 days**, with billing managed through Whop. Monitoring depends on a single probe location, its electricity and internet connectivity; no uptime SLA is promised.
+The advertised subscription is **A$9.99 every 30 days**, with billing managed through Whop. Monitoring depends on a single probe location, its electricity and internet connectivity; no uptime SLA is promised.
 
 **[Visit SiteGuard — plans and signup](https://siteguard.clientstream.io/)**
 
