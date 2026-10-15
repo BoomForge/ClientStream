@@ -1626,6 +1626,7 @@ async function loadIncome() {
 }
 
 let incomeInvoiceResults = [];
+let incomeInvoicePreviouslySelected = "";
 let incomeInvoiceRequest = 0;
 let incomeInvoiceSearchTimer = null;
 
@@ -1674,6 +1675,8 @@ function updateIncomeInvoiceSelection() {
   const form = $("#income-form");
   const invoice = incomeInvoiceResults.find((i) => i.id === form.elements.invoiceId.value);
   const selected = Boolean(invoice);
+  if (!selected && incomeInvoicePreviouslySelected) form.elements.amount.value = "";
+  incomeInvoicePreviouslySelected = invoice?.id || "";
   const partialGroup = $("#income-partial-group");
   partialGroup.classList.toggle("hidden", !selected);
   $("#income-description-group").classList.toggle("hidden", selected);
@@ -1730,6 +1733,7 @@ function openIncomeDialog(item = null) {
   $("#income-invoice-picker").classList.toggle("hidden", Boolean(item));
   $("#income-entry-hint").classList.toggle("hidden", Boolean(item));
   incomeInvoiceResults = [];
+  incomeInvoicePreviouslySelected = "";
   ++incomeInvoiceRequest;
   $("#income-invoice-search").value = "";
   $("#income-invoice-select").replaceChildren(new Option("Other income — not linked to an invoice", ""));
