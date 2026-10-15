@@ -30,16 +30,39 @@ try {
   await api("/api/quotes/" + quote.id, "PATCH", { status: "draft" }, 409);
   await api("/api/quotes/" + quote.id, "PATCH", { items }, 409);
   const invoice = (await api("/api/invoices", "POST", { clientId: client.id, taxMode: "gst10", items }, 201)).invoice;
+  check(!(await api("/api/income/available-invoices")).invoices.some((x) => x.id === invoice.id),
+    "Draft invoice should not be offered for allocating income");
   check(invoice.total_cents === 16500, "Invoice totals failed");
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "sent" });
+  let available = (await api("/api/income/available-invoices")).invoices;
+  check(available.some((x) => x.id === invoice.id && x.outstanding_cents === 16500),
+    "Issued outstanding invoice missing from income search");
+  available = (await api("/api/income/available-invoices?q=" + encodeURIComponent(invoice.number))).invoices;
+  check(available.some((x) => x.id === invoice.id), "Search by invoice number must find matching outstanding invoice");
+  available = (await api("/api/income/available-invoices?q=Test%20Customer")).invoices;
+  check(available.some((x) => x.id === invoice.id), "Search by client name must find matching invoice");
+  check(!(await api("/api/income/available-invoices?q=nonmatchinginvoice")).invoices.some((x) => x.id === invoice.id),
+    "Search should exclude unrelated invoices");
+
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "draft" }, 409);
   await api("/api/invoices/" + invoice.id, "PATCH", { clientId: client.id }, 409);
-  const payment1 = await api("/api/invoices/" + invoice.id + "/payments", "POST", { amountCents: 5000 }, 201);
+  // Add Income uses partialPayment=true, preserving the remaining invoice.
+  await api("/api/invoices/" + invoice.id + "/payments", "POST",
+    { amountCents: 5000, partialPayment: false }, 400);
+  await api("/api/invoices/" + invoice.id + "/payments", "POST",
+    { amountCents: 16500, partialPayment: true }, 400);
+  const payment1 = await api("/api/invoices/" + invoice.id + "/payments", "POST",
+    { amountCents: 5000, partialPayment: true, notes: "First instalment" }, 201);
   check(payment1.invoice.amount_paid_cents === 5000 && payment1.invoice.status === "part_paid", "Partial payment state failed");
+  available = (await api("/api/income/available-invoices")).invoices;
+  check(available.some((x) => x.id === invoice.id && x.outstanding_cents === 11500),
+    "Part-paid invoice should stay in the searchable list with its remaining balance");
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "void" }, 409);
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "draft" }, 409);
-  const payment2 = await api("/api/invoices/" + invoice.id + "/payments", "POST", { amountCents: 11500 }, 201);
+  const payment2 = await api("/api/invoices/" + invoice.id + "/payments", "POST", { amountCents: 11500, partialPayment: false }, 201);
   check(payment2.invoice.status === "paid" && !!payment2.invoice.paid_at, "Final payment timestamp/status failed");
+  check(!(await api("/api/income/available-invoices")).invoices.some((x) => x.id === invoice.id),
+    "Fully paid invoice must leave searchable income allocation results");
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "sent" }, 409);
   await api("/api/invoices/" + invoice.id + "/payments", "POST", { amountCents: 100 }, 400);
 

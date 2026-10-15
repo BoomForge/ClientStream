@@ -176,7 +176,7 @@
             <div><p class="eyebrow">MONEY RECEIVED</p><h3>Income</h3></div>
             <button class="primary small" id="add-income">Add income</button>
           </div>
-          <p class="finance-hint">Payments recorded on invoices appear here automatically. Add other income separately; don't record an invoice payment twice.</p>
+          <p class="finance-hint">Search an outstanding invoice when adding income, or record other income separately. Paid invoices disappear from the available list; partial payments stay until settled.</p>
           <div class="table-wrap"><table><thead><tr><th>Source</th><th>Reference / client</th><th>Date received</th><th>Amount</th><th></th></tr></thead><tbody id="income-body"></tbody></table></div>
           <div class="empty hidden" id="income-empty">No income recorded yet.</div>
         </div>
@@ -403,13 +403,28 @@
     <form id="income-form" method="dialog" class="dialog-form">
       <div class="dialog-head"><h3 id="income-dialog-title">Add income</h3><button type="button" class="icon-button close-dialog">×</button></div>
       <input type="hidden" name="id">
-      <label>Description<input name="description" required maxlength="240" placeholder="Payment source or service"></label>
+      <div id="income-invoice-picker" class="income-invoice-picker">
+        <label>Search active invoices
+          <input id="income-invoice-search" type="search" placeholder="Invoice number or client name" autocomplete="off" aria-controls="income-invoice-select">
+        </label>
+        <label>Assign payment to
+          <select id="income-invoice-select" name="invoiceId">
+            <option value="">Other income — not linked to an invoice</option>
+          </select>
+        </label>
+        <p class="hint" id="income-invoice-balance" aria-live="polite">Choose an invoice to allocate the payment, or leave Other income selected.</p>
+        <label id="income-partial-group" class="income-partial-option hidden">
+          <input id="income-partial-payment" name="partialPayment" type="checkbox">
+          <span><strong>Partial payment</strong> — keep this invoice available until its remaining balance is paid</span>
+        </label>
+      </div>
+      <label id="income-description-group">Description<input name="description" required maxlength="240" placeholder="Payment source or service"></label>
       <div class="two-col">
         <label>Amount received (AUD)<input name="amount" type="number" min="0.01" step="0.01" required></label>
         <label>Date received<input name="receivedAt" type="date" required></label>
       </div>
       <label>Notes<textarea name="notes" rows="3" maxlength="2000"></textarea></label>
-      <p class="hint">For invoice-related payments, use Invoices → Payment instead. This prevents double-counting income.</p>
+      <p class="hint" id="income-entry-hint">Full payments settle the selected invoice and remove it from the searchable list. Partial payments leave the remaining balance open.</p>
       <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit" id="save-income-button">Add income</button></div>
     </form>
   </dialog>

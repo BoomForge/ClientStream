@@ -6,7 +6,7 @@ import { dashboard } from "./dashboard";
 import { archiveClient, createClient, listClients, updateClient } from "./clients";
 import { cancelJob, createJob, listJobs, updateJob } from "./jobs";
 import { createExpense, updateExpense, deleteExpense, listExpenses } from "./expenses";
-import { createIncome, updateIncome, deleteIncome, listIncome } from "./income";
+import { createIncome, updateIncome, deleteIncome, listIncome, availableIncomeInvoices } from "./income";
 import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
 import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
 import { paypalWebhook } from "./paypal-webhook";
@@ -152,6 +152,7 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (request.method === "PATCH") return updateExpense(request, env);
     if (request.method === "DELETE") return deleteExpense(request, env);
   }
+  if (request.method === "GET" && path === "/api/income/available-invoices") return availableIncomeInvoices(request, env);
   if (path === "/api/income") {
     if (request.method === "GET") return listIncome(request, env);
     if (request.method === "POST") return createIncome(request, env);
