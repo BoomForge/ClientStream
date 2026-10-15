@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /siteguard.html
+Allow: /siteguard-website-down.html
+Allow: /siteguard-ssl-certificate-expiry.html
 Allow: /siteguard-outage-checklist.html
 Allow: /siteguard-ssl-guide.html
 Allow: /siteguard-feed.xml
