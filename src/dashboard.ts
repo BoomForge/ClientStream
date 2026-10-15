@@ -31,7 +31,7 @@ async function currentMetrics(env: Env, businessId: string): Promise<DashboardMe
       "SELECT COUNT(*) AS count FROM jobs WHERE business_id = ? AND status IN ('planned', 'active')"
     ).bind(businessId).first<{ count: number }>(),
     env.DB.prepare(
-      "SELECT COUNT(*) AS count, COALESCE(SUM(MAX(0, total_cents - amount_paid_cents)), 0) AS outstanding, COALESCE(SUM(CASE WHEN status = 'paid' THEN total_cents ELSE 0 END), 0) AS paid FROM invoices WHERE business_id = ? AND status != 'void'"
+      "SELECT COUNT(*) AS count, COALESCE(SUM(MAX(0, total_cents - amount_paid_cents)), 0) AS outstanding, COALESCE(SUM(CASE WHEN status = 'paid' THEN total_cents ELSE 0 END), 0) AS paid FROM invoices WHERE business_id = ? AND status NOT IN ('draft','void')"
     ).bind(businessId).first<{ count: number; outstanding: number; paid: number }>(),
     env.DB.prepare(
       "SELECT COALESCE(SUM(amount_cents), 0) AS total FROM expenses WHERE business_id = ?"
