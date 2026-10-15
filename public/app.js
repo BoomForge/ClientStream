@@ -71,6 +71,7 @@ async function showApp() {
   $("#account-name").textContent = state.me.user.displayName || "Account";
   $("#account-email").textContent = state.me.user.email;
   $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
+  syncSidebarUpgrade();
   renderVerification();
   await refreshAll();
   await handleBillingReturn();
@@ -274,6 +275,7 @@ async function refreshIdentity() {
   $("#account-name").textContent = state.me.user.displayName || "Account";
   $("#account-email").textContent = state.me.user.email;
   $("#plan-chip").textContent = (state.me.business?.plan || "free") + " plan";
+  syncSidebarUpgrade();
   renderVerification();
 }
 
@@ -302,11 +304,17 @@ async function loadBilling() {
   }
 }
 
+function syncSidebarUpgrade() {
+  const isPro = (state.billing?.businessPlan || state.me?.business?.plan) === "pro";
+  $("#sidebar-upgrade").classList.toggle("hidden", isPro);
+}
+
 function renderBilling() {
   const billing = state.billing || {};
   const isPro = billing.businessPlan === "pro";
   const configured = Boolean(billing.configured);
   const subscription = billing.subscription;
+  syncSidebarUpgrade();
 
   $("#billing-plan").textContent = isPro ? "Pro plan" : "Free plan";
   if (billing.environment === "sandbox") {
@@ -370,18 +378,40 @@ async function handleBillingReturn() {
   }
 }
 
-$("#upgrade-button").addEventListener("click", async () => {
+let upgradePending = false;
+async function startPayPalUpgrade() {
+  if (upgradePending) return;
+  if ((state.billing?.businessPlan || state.me?.business?.plan) === "pro") return;
+  if (!state.billing?.configured) {
+    setView("dashboard");
+    $("#billing-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+    toast("PayPal subscriptions are not configured yet. The Free plan remains available.", true);
+    return;
+  }
+  upgradePending = true;
+  const upgrade = $("#upgrade-button");
+  const sidebarUpgrade = $("#sidebar-upgrade");
+  upgrade.disabled = true;
+  sidebarUpgrade.disabled = true;
+  upgrade.textContent = "Opening PayPal…";
+  sidebarUpgrade.firstChild.textContent = "Opening… ";
   try {
-    $("#upgrade-button").disabled = true;
-    $("#upgrade-button").textContent = "Opening PayPal…";
     const result = await api("/api/billing/checkout", { method: "POST" });
+    if (!result?.checkoutUrl) throw new Error("PayPal did not return a checkout link.");
     location.href = result.checkoutUrl;
   } catch (error) {
-    $("#upgrade-button").disabled = false;
-    $("#upgrade-button").textContent = "Upgrade to Pro";
     toast(error.message, true);
+  } finally {
+    upgradePending = false;
+    upgrade.disabled = false;
+    upgrade.textContent = "Upgrade to Pro";
+    sidebarUpgrade.firstChild.textContent = "Upgrade ";
+    sidebarUpgrade.disabled = false;
+    renderBilling();
   }
-});
+}
+$("#upgrade-button").addEventListener("click", startPayPalUpgrade);
+$("#sidebar-upgrade").addEventListener("click", startPayPalUpgrade);
 
 $("#reconcile-billing").addEventListener("click", async () => {
   try {
