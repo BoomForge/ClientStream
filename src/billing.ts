@@ -98,7 +98,7 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
   if (business.plan === "pro") return json({ error: "This business is already on Pro." }, { status: 409 });
   // Prevent duplicate subscriptions from multiple clicks or prior pending checkout.
   const previous = await linked(env, business.id);
-  if (previous?.provider_subscription_id && ["pending", "active", "past_due"].includes(previous.status)) {
+  if (previous?.provider_subscription_id) {
     let existing: PayPalSubscription | null = null;
     try { existing = await loadPayPalSubscription(env, previous.provider_subscription_id); }
     catch { return json({ error: "Unable to verify your existing PayPal subscription. Try again shortly." }, { status: 503 }); }
