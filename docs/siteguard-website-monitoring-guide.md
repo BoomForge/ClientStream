@@ -56,3 +56,10 @@ Not necessarily. With a single monitoring location, local connectivity or provid
 ### How often should I review alerts?
 
 Act on genuine incidents promptly; revisit threshold settings when alerts are too noisy. Monitoring should help, rather than become another dashboard to babysit.
+
+## Free troubleshooting resources
+
+- [Website down? A small business outage response checklist](https://app.clientstream.io/siteguard-outage-checklist.html)
+- [SSL certificate expiry guide](https://app.clientstream.io/siteguard-ssl-guide.html)
+
+These original ClientStream guidance pages are designed for useful search discovery, not bulk AI content. The approved SiteGuard CTA directs visitors to the actual subscription page without tracking parameters that could interfere with checkout. On successful ClientStream deploy, the existing IndexNow workflow checks the public guide pages and queues change notifications. IndexNow acceptance is not proof of search indexing or traffic.

@@ -15,4 +15,18 @@
     <summary>How small businesses can watch important website pages, SSL certificate expiry and incident/recovery email alerts, with limitations and a practical checklist.</summary>
     <content type="text">Start with your homepage, contact or enquiry page, and customer booking page. Website monitors flag HTTP response failures and, where configured, missing page text. Check alerts from a second source before assuming a widespread outage. Learn the fundamentals and explore SiteGuard, a ClientStream service, at the linked guide.</content>
   </entry>
+  <entry>
+    <title>Website down? A small business outage response checklist</title>
+    <id>https://app.clientstream.io/siteguard-outage-checklist.html</id>
+    <link href="https://app.clientstream.io/siteguard-outage-checklist.html" type="text/html"/>
+    <updated>2026-10-15T02:00:00Z</updated>
+    <summary>Verify a website outage, identify likely causes, communicate carefully and confirm recovery without unnecessary configuration changes.</summary>
+  </entry>
+  <entry>
+    <title>SSL certificate expiry: what to check</title>
+    <id>https://app.clientstream.io/siteguard-ssl-guide.html</id>
+    <link href="https://app.clientstream.io/siteguard-ssl-guide.html" type="text/html"/>
+    <updated>2026-10-15T02:00:00Z</updated>
+    <summary>Practical HTTPS certificate health and renewal checks for small businesses, including the limitations of basic uptime monitoring.</summary>
+  </entry>
 </feed>
