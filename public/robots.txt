@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /siteguard.html
+Allow: /siteguard-feed.xml
+Allow: /siteguard-banner.jpg
+Allow: /siteguard-square.jpg
+Allow: /siteguard-flyer.jpg
+Disallow: /api/
+Sitemap: https://app.clientstream.io/sitemap.xml
