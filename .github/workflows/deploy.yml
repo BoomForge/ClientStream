@@ -86,3 +86,7 @@ jobs:
             tail -n 45 /tmp/clientstream-hash-tail.log
             exit 1
           fi
+
+      - name: Verify public SiteGuard clean redirect after Worker deployment
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: node scripts/probe-siteguard-sales.mjs
