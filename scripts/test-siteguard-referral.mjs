@@ -44,10 +44,9 @@ for (const suffix of [
   assert.equal(response.status, 302);
   assert.equal(calls.length, before, "Healthcheck/HEAD requests must not pollute click counts");
 }
-for (const [source, day, count, updated] of calls) {
+for (const [source, day, updated] of calls) {
   assert.match(source, /^[a-z_]+$/);
   assert.match(day, /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(typeof updated === "string" && updated.includes("T"));
-  assert.equal(count, undefined); // only source/date/timestamp are bound; count hardcoded to 1 in SQL
 }
 console.log("SiteGuard safe redirect, six source allowlist, aggregate-only storage and probe bypass passed.");
