@@ -3,7 +3,7 @@ import { PLAN_CATALOG } from "./types";
 import { requireAuth, requireBusiness } from "./auth";
 import { json, mutationOriginIsAllowed } from "./http";
 import { paypalCall, paypalConfig, loadPayPalPlan, loadPayPalSubscription } from "./paypal";
-import { planMatchesClientStream, subscriptionStatus, approvedPayPalUrl } from "./paypal-contract";
+import { planMatchesClientStream, subscriptionStatus, approvedPayPalUrl, hasConfirmedProPayment } from "./paypal-contract";
 import type { PayPalSubscription } from "./paypal-contract";
 
 interface LinkedSubscription {
@@ -25,7 +25,8 @@ async function applySubscription(env: Env, businessId: string, subscription: Pay
   if (!config || !subscription.id || subscription.plan_id !== config.planId ||
       subscription.custom_id !== businessId) return false;
 
-  const status = subscriptionStatus(subscription.status);
+  const status = subscription.status === "ACTIVE" && !hasConfirmedProPayment(subscription)
+    ? "pending" : subscriptionStatus(subscription.status);
   const now = new Date().toISOString();
   const nextBilling = subscription.billing_info?.next_billing_time ?? null;
   const currentPeriodStart = subscription.start_time ?? null;
@@ -103,7 +104,7 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
     catch { return json({ error: "Unable to verify your existing PayPal subscription. Try again shortly." }, { status: 503 }); }
     if (existing.status === "ACTIVE") {
       await applySubscription(env, business.id, existing);
-      return json({ error: "Your Pro subscription is already active. Refresh to see it.", code: "SUBSCRIPTION_ACTIVE" }, { status: 409 });
+      return json({ error: "You already have a PayPal subscription. Use Check payment to confirm Pro activation.", code: "SUBSCRIPTION_ACTIVE" }, { status: 409 });
     }
     if (existing.status === "APPROVAL_PENDING" || existing.status === "APPROVED") {
       const href = existing.links?.find((link) => link.rel === "approve")?.href;
@@ -172,7 +173,7 @@ export async function reconcileBilling(request: Request, env: Env): Promise<Resp
   const subscription = await loadPayPalSubscription(env, row.provider_subscription_id);
   const applied = await applySubscription(env, business.id, subscription);
   if (!applied) return json({ error: "PayPal subscription does not match this business and plan." }, { status: 409 });
-  return json({ reconciled: true, active: subscription.status === "ACTIVE", status: subscriptionStatus(subscription.status) });
+  return json({ reconciled: true, active: hasConfirmedProPayment(subscription), status: hasConfirmedProPayment(subscription) ? "active" : subscriptionStatus(subscription.status) });
 }
 
 export async function cancelBilling(request: Request, env: Env): Promise<Response> {
