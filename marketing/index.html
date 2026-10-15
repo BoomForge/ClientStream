@@ -242,6 +242,7 @@
       .phone-screen { min-height: 560px; }
       .footer-grid { flex-direction: column; align-items: flex-start; }
     }
+  @media(max-width:720px){#siteguard>.container{grid-template-columns:1fr!important}}
   </style>
 </head>
 <body>
@@ -506,6 +507,21 @@
       </div>
     </section>
 
+    <section class="section section-soft" id="siteguard" aria-labelledby="siteguard-heading">
+      <div class="container" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);align-items:center;gap:30px">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span>ALSO FROM CLIENTSTREAM</div>
+          <h2 id="siteguard-heading" style="font-size:clamp(30px,4vw,43px);line-height:1.15;margin:18px 0">Would you know if your business website went offline?</h2>
+          <p style="max-width:640px;line-height:1.7;color:var(--muted)">SiteGuard monitors up to three owner-authorised website URLs and provides incident/recovery email alerts, response-time and SSL visibility. Single-location best-effort monitoring; no uptime guarantee or checkout testing.</p>
+          <p style="font-weight:800;color:var(--navy)">SiteGuard — A$9.99 every 30 days</p>
+          <a class="btn btn-primary" href="https://siteguard.clientstream.io/?utm_source=clientstream_website&amp;utm_medium=owned_referral&amp;utm_campaign=siteguard_launch">See SiteGuard plans →</a>
+          <a class="btn btn-outline" href="/siteguard.html">Free monitoring guide →</a>
+        </div>
+        <a href="/siteguard.html" aria-label="Read the SiteGuard website monitoring guide">
+          <img src="siteguard-banner.jpg" loading="lazy" alt="SiteGuard website monitoring for small businesses" style="border-radius:18px;width:100%;border:1px solid var(--line)">
+        </a>
+      </div>
+    </section>
     <section class="final-cta">
       <div class="container">
         <h2>Less chasing paperwork. More control over your clients.</h2>
@@ -524,7 +540,7 @@
         </a>
         <div class="footer-copy">© <span id="year"></span> ClientStream. Simple client tracking for small business.</div>
       </div>
-      <div class="footer-links"><a href="https://app.clientstream.io/">Open app</a><a href="#contact">Contact</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></div>
+      <div class="footer-links"><a href="https://app.clientstream.io/">Open app</a><a href="#contact">Contact</a><a href="/siteguard.html">SiteGuard</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></div>
     </div>
   </footer>
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
