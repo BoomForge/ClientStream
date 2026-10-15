@@ -403,6 +403,7 @@ async function startPayPalUpgrade() {
     toast(error.message, true);
   } finally {
     upgradePending = false;
+    upgrade.disabled = false;
     upgrade.textContent = "Upgrade to Pro";
     sidebarUpgrade.firstChild.textContent = "Upgrade ";
     sidebarUpgrade.disabled = false;
