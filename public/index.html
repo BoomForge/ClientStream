@@ -404,14 +404,14 @@
       <div class="dialog-head"><h3 id="income-dialog-title">Add income</h3><button type="button" class="icon-button close-dialog">×</button></div>
       <input type="hidden" name="id">
       <div id="income-invoice-picker" class="income-invoice-picker">
-        <label>Search active invoices
-          <input id="income-invoice-search" type="search" placeholder="Invoice number or client name" autocomplete="off" aria-controls="income-invoice-select">
-        </label>
-        <label>Assign payment to
-          <select id="income-invoice-select" name="invoiceId">
-            <option value="">Other income — not linked to an invoice</option>
-          </select>
-        </label>
+        <label for="income-invoice-search">Find invoice (number or client)</label>
+        <div class="income-search-row">
+          <input id="income-invoice-search" type="search" placeholder="Search by invoice number or client name" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="income-invoice-results">
+          <button type="button" class="secondary small" id="income-show-invoices" aria-label="Show all available invoices">Show invoices</button>
+        </div>
+        <input id="income-invoice-id" type="hidden" name="invoiceId" value="">
+        <div id="income-invoice-results" class="income-invoice-results hidden" role="listbox" aria-label="Matching invoices"></div>
+        <p id="income-selected" class="income-selected hidden" aria-live="polite"></p>
         <p class="hint" id="income-invoice-balance" aria-live="polite">Choose an invoice to allocate the payment, or leave Other income selected.</p>
         <label id="income-partial-group" class="income-partial-option hidden">
           <input id="income-partial-payment" name="partialPayment" type="checkbox">
