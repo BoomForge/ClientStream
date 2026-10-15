@@ -719,6 +719,14 @@ async function loadSettings() {
     form.elements.businessEmail.value = state.settings.business_email || "";
     form.elements.businessPhone.value = state.settings.business_phone || "";
     form.elements.businessAddress.value = state.settings.business_address || "";
+    form.elements.contactName.value = state.settings.contact_name || "";
+    form.elements.websiteUrl.value = state.settings.website_url || "";
+    form.elements.bankAccountName.value = state.settings.bank_account_name || "";
+    form.elements.bankBsb.value = state.settings.bank_bsb || "";
+    form.elements.bankAccountNumber.value = state.settings.bank_account_number || "";
+    form.elements.paymentInstructions.value = state.settings.payment_instructions || "";
+    pendingLogoData = undefined;
+    updateLogoPreview(state.settings.logo_data_url);
     form.elements.googleReviewUrl.value = state.settings.google_review_url || "";
     form.elements.gstRegistered.checked = Boolean(state.settings.gst_registered);
     $("#owner-reminder-email-enabled").checked = Boolean(state.settings.owner_reminder_email_enabled);
@@ -749,6 +757,46 @@ $("#change-password-form").addEventListener("submit", async (event) => {
   }
 });
 
+
+let pendingLogoData;
+function updateLogoPreview(source) {
+  const preview = $("#logo-preview");
+  if (source && /^data:image\/(png|jpeg);base64,/.test(source)) {
+    preview.src = source;
+    preview.classList.remove("hidden");
+  } else {
+    preview.removeAttribute("src");
+    preview.classList.add("hidden");
+  }
+}
+
+$("#business-logo-file").addEventListener("change", async (event) => {
+  const file = event.currentTarget.files?.[0];
+  if (!file) return;
+  if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 100_000) {
+    event.currentTarget.value = "";
+    toast("Choose a PNG or JPEG smaller than 100 KB.", true);
+    return;
+  }
+  try {
+    const encoded = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Unable to read logo"));
+      reader.readAsDataURL(file);
+    });
+    pendingLogoData = encoded;
+    updateLogoPreview(encoded);
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+$("#remove-business-logo").addEventListener("click", () => {
+  pendingLogoData = null;
+  $("#business-logo-file").value = "";
+  updateLogoPreview(null);
+});
+
 $("#settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -761,12 +809,22 @@ $("#settings-form").addEventListener("submit", async (event) => {
         businessEmail: form.get("businessEmail"),
         businessPhone: form.get("businessPhone"),
         businessAddress: form.get("businessAddress"),
+        contactName: form.get("contactName"),
+        websiteUrl: form.get("websiteUrl"),
+        bankAccountName: form.get("bankAccountName"),
+        bankBsb: form.get("bankBsb"),
+        bankAccountNumber: form.get("bankAccountNumber"),
+        paymentInstructions: form.get("paymentInstructions"),
+        ...(pendingLogoData !== undefined ? { logoDataUrl: pendingLogoData } : {}),
         googleReviewUrl: form.get("googleReviewUrl"),
         gstRegistered: form.get("gstRegistered"),
         ownerReminderEmailEnabled: $("#owner-reminder-email-enabled").checked
       })
     });
     state.settings = data.settings;
+    pendingLogoData = undefined;
+    updateLogoPreview(state.settings.logo_data_url);
+    $("#business-logo-file").value = "";
     await refreshIdentity();
     toast("Business profile saved.");
   } catch (error) {
@@ -1095,6 +1153,7 @@ function renderJobs() {
 
     const actions = document.createElement("td");
     actions.className = "row-actions";
+    actions.append(button("Edit", () => openJobDialog(job)));
     actions.append(button("Cancel", async () => {
       if (!confirm("Cancel this job?")) return;
       try {
@@ -1108,18 +1167,28 @@ function renderJobs() {
   }));
 }
 
-$("#add-job").addEventListener("click", () => {
-  $("#job-form").reset();
+function openJobDialog(job = null) {
+  const form = $("#job-form");
+  form.reset();
   fillClientSelects();
+  form.elements.id.value = job?.id || "";
+  form.elements.title.value = job?.title || "";
+  form.elements.clientId.value = job?.client_id || "";
+  form.elements.scheduledFor.value = job?.scheduled_for ? String(job.scheduled_for).slice(0, 16) : "";
+  form.elements.description.value = job?.description || "";
+  $("#job-dialog-title").textContent = job ? "Edit job" : "Add job";
+  $("#save-job-button").textContent = job ? "Save changes" : "Add job";
   $("#job-dialog").showModal();
-});
+}
+$("#add-job").addEventListener("click", () => openJobDialog());
 
 $("#job-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
+  const id = String(form.get("id") || "");
   try {
-    await api("/api/jobs", {
-      method: "POST",
+    await api(id ? "/api/jobs/" + encodeURIComponent(id) : "/api/jobs", {
+      method: id ? "PATCH" : "POST",
       body: JSON.stringify({
         title: form.get("title"),
         clientId: form.get("clientId"),
@@ -1128,8 +1197,8 @@ $("#job-form").addEventListener("submit", async (event) => {
       })
     });
     $("#job-dialog").close();
-    await Promise.all([loadJobs(), loadDashboard()]);
-    toast("Job added.");
+    await Promise.all([loadJobs(), loadDashboard(), loadToday()]);
+    toast(id ? "Job changes saved." : "Job added.");
   } catch (error) { toast(error.message, true); }
 });
 
