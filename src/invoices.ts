@@ -321,7 +321,7 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
   const id = paymentInvoiceId(new URL(request.url).pathname);
   if (!id) return json({ error: "Invalid invoice id." }, { status: 400 });
 
-  const body = await readJson<{ amountCents?: unknown }>(request);
+  const body = await readJson<{ amountCents?: unknown; partialPayment?: unknown; receivedAt?: unknown; notes?: unknown }>(request);
   const amountCents = typeof body?.amountCents === "number" && Number.isFinite(body.amountCents)
     ? Math.round(body.amountCents)
     : null;
@@ -346,10 +346,35 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
     return json({ error: "Payment cannot exceed the outstanding balance." }, { status: 400 });
   }
 
+  // The Add Income checkbox explicitly distinguishes a final payment from a
+  // part payment. Legacy invoice Payment actions omit the flag and retain
+  // their existing ability to record either amount.
+  if (typeof body?.partialPayment === "boolean") {
+    if (body.partialPayment && amountCents >= outstanding) {
+      return json({ error: "Partial payment must be less than the outstanding invoice balance. Untick Partial payment to settle in full." }, { status: 400 });
+    }
+    if (!body.partialPayment && amountCents !== outstanding) {
+      return json({ error: "Unticked payments must settle the entire outstanding balance. Tick Partial payment to record a smaller amount." }, { status: 400 });
+    }
+  }
+  const paymentDate = body?.receivedAt;
+  let receivedAt: string | null = null;
+  if (paymentDate !== undefined) {
+    if (typeof paymentDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) ||
+        Number.isNaN(Date.parse(paymentDate + "T00:00:00Z")) ||
+        new Date(paymentDate + "T00:00:00Z").toISOString().slice(0, 10) !== paymentDate ||
+        paymentDate > await businessToday(env, business.id)) {
+      return json({ error: "Choose a valid received date, not in the future." }, { status: 400 });
+    }
+    receivedAt = paymentDate + "T12:00:00Z";
+  }
+  const paymentNotes = textValue(body?.notes, 2000);
+
   const newPaid = invoice.amount_paid_cents + amountCents;
   const paid = newPaid >= invoice.total_cents;
   const status = paid ? "paid" : (isPastDate(invoice.due_at, await businessToday(env, business.id)) ? "overdue" : "part_paid");
   const now = new Date().toISOString();
+  const paidAt = receivedAt ?? now;
   const paymentId = crypto.randomUUID();
 
   // Compare-and-swap invoice balance inside the same D1 transaction as its
@@ -357,17 +382,17 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
   const results = await env.DB.batch([
     env.DB.prepare(
       "UPDATE invoices SET amount_paid_cents = ?, status = ?, paid_at = ?, updated_at = ? WHERE id = ? AND business_id = ? AND amount_paid_cents = ? AND status NOT IN ('paid','void') AND total_cents >= amount_paid_cents + ?"
-    ).bind(newPaid, status, paid ? now : null, now, id, business.id, invoice.amount_paid_cents, amountCents),
+    ).bind(newPaid, status, paid ? paidAt : null, now, id, business.id, invoice.amount_paid_cents, amountCents),
     env.DB.prepare(
-      "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at) SELECT ?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ? WHERE changes() = 1"
-    ).bind(paymentId, business.id, id, amountCents, now, now)
+      "INSERT INTO payments (id, business_id, invoice_id, provider, amount_cents, currency, status, paid_at, created_at, description, notes) SELECT ?, ?, ?, 'manual', ?, 'AUD', 'completed', ?, ?, 'Invoice payment', ? WHERE changes() = 1"
+    ).bind(paymentId, business.id, id, amountCents, paidAt, now, paymentNotes)
   ]);
   if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) {
     return json({ error: "Invoice balance changed. Refresh and try again.", code: "PAYMENT_CONFLICT" }, { status: 409 });
   }
 
   return json({
-    payment: { id: paymentId, invoice_id: id, amount_cents: amountCents, paid_at: now },
-    invoice: { id, amount_paid_cents: newPaid, status, paid_at: paid ? now : null }
+    payment: { id: paymentId, invoice_id: id, amount_cents: amountCents, paid_at: paidAt },
+    invoice: { id, amount_paid_cents: newPaid, status, paid_at: paid ? paidAt : null }
   }, { status: 201 });
 }
