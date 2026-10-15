@@ -9,6 +9,7 @@ on:
       - marketing/robots.txt
       - marketing/sitemap.xml
       - marketing/a94f813e21c847d6a986ebc34615f0d2.txt
+      - wrangler.marketing.jsonc
       - .github/workflows/deploy-marketing.yml
   workflow_dispatch:
 
@@ -42,6 +43,21 @@ jobs:
           curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/
       - name: Deploy marketing site
         run: npx wrangler deploy --config wrangler.marketing.jsonc
+      - name: Verify the public domain serves the new SiteGuard funnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --location --max-time 12 https://clientstream.io/siteguard.html | grep -q 'If your website goes offline'; then
+              curl --fail --silent --show-error --location --max-time 12 https://clientstream.io/ | grep -q 'href="/siteguard.html"'
+              curl --fail --silent --show-error --location --max-time 12 https://clientstream.io/sitemap.xml | grep -q '<urlset'
+              echo "SITEGUARD MARKETING PUBLICLY VERIFIED"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Live domain is not serving latest marketing release" >&2
+          exit 1
       - name: Inform IndexNow of newly published ClientStream and SiteGuard pages
         continue-on-error: true
         shell: bash
