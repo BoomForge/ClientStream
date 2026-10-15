@@ -1630,67 +1630,132 @@ let incomeInvoicePreviouslySelected = "";
 let incomeInvoiceRequest = 0;
 let incomeInvoiceSearchTimer = null;
 
-// The server searches ALL eligible invoices (not just the 500 newest invoices
-// returned by the main table), and only returns invoices still outstanding.
+function hideIncomeInvoiceResults() {
+  $("#income-invoice-results").classList.add("hidden");
+  $("#income-invoice-search").setAttribute("aria-expanded", "false");
+}
+
+function showIncomeInvoiceResults() {
+  $("#income-invoice-results").classList.remove("hidden");
+  $("#income-invoice-search").setAttribute("aria-expanded", "true");
+}
+
+function renderIncomeInvoiceResults() {
+  const list = $("#income-invoice-results");
+  const query = $("#income-invoice-search").value.trim();
+  const nodes = [];
+  const other = document.createElement("button");
+  other.type = "button";
+  other.className = "income-invoice-option";
+  other.setAttribute("role", "option");
+  other.textContent = "Other income — not linked to an invoice";
+  other.addEventListener("click", () => {
+    $("#income-invoice-id").value = "";
+    $("#income-invoice-search").value = "";
+    updateIncomeInvoiceSelection();
+    hideIncomeInvoiceResults();
+  });
+  nodes.push(other);
+  for (const invoice of incomeInvoiceResults) {
+    const row = document.createElement("div");
+    row.className = "income-invoice-result";
+    const title = document.createElement("span");
+    title.textContent = invoice.number + " · " + invoice.client_name + " · " +
+      money(invoice.outstanding_cents) + " outstanding";
+    if (invoice.status === "draft") {
+      row.classList.add("income-invoice-draft");
+      const explanation = document.createElement("small");
+      explanation.textContent = "Draft — mark sent before assigning income";
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "secondary small";
+      mark.textContent = "Mark sent";
+      mark.addEventListener("click", async () => {
+        mark.disabled = true;
+        try {
+          await api("/api/invoices/" + encodeURIComponent(invoice.id), {
+            method: "PATCH", body: JSON.stringify({ status: "sent" })
+          });
+          await Promise.all([loadInvoices(), loadDashboard(), loadToday()]);
+          await refreshIncomeInvoiceChoices();
+          toast(invoice.number + " marked sent. Select it to record income.");
+        } catch (error) {
+          mark.disabled = false;
+          toast(error.message, true);
+        }
+      });
+      row.append(title, explanation, mark);
+    } else {
+      const select = document.createElement("button");
+      select.type = "button";
+      select.className = "income-invoice-option";
+      select.setAttribute("role", "option");
+      select.append(title);
+      select.addEventListener("click", () => {
+        $("#income-invoice-id").value = invoice.id;
+        $("#income-invoice-search").value = invoice.number + " · " + invoice.client_name;
+        updateIncomeInvoiceSelection();
+        hideIncomeInvoiceResults();
+      });
+      row.append(select);
+    }
+    nodes.push(row);
+  }
+  if (incomeInvoiceResults.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "income-invoice-empty";
+    empty.textContent = query
+      ? "No invoices match that search. Try a client name or invoice number."
+      : "No unpaid invoices. Create an invoice first or record other income.";
+    nodes.push(empty);
+  }
+  list.replaceChildren(...nodes);
+  showIncomeInvoiceResults();
+}
+
 async function refreshIncomeInvoiceChoices() {
-  const select = $("#income-invoice-select");
   const query = $("#income-invoice-search").value.trim();
   const requestId = ++incomeInvoiceRequest;
-  select.disabled = true;
+  $("#income-invoice-balance").textContent = "Searching invoices…";
   try {
     const data = await api("/api/income/available-invoices?q=" + encodeURIComponent(query));
     if (requestId !== incomeInvoiceRequest || !$("#income-dialog").open) return;
     incomeInvoiceResults = data.invoices || [];
-    const options = [];
-    const other = document.createElement("option");
-    other.value = "";
-    other.textContent = "Other income — not linked to an invoice";
-    options.push(other);
-    for (const invoice of incomeInvoiceResults) {
-      const option = document.createElement("option");
-      option.value = invoice.id;
-      option.textContent = invoice.number + " · " + invoice.client_name + " · " +
-        money(invoice.outstanding_cents) + " outstanding";
-      options.push(option);
-    }
-    select.replaceChildren(...options);
-    select.value = "";
-    $("#income-invoice-balance").textContent = incomeInvoiceResults.length
-      ? "Select an outstanding invoice, or leave Other income selected."
-      : (query ? "No matching outstanding invoices." : "No outstanding issued invoices. You can still add other income.");
+    renderIncomeInvoiceResults();
     updateIncomeInvoiceSelection();
   } catch (error) {
-    if (requestId === incomeInvoiceRequest) {
-      select.replaceChildren();
+    if (requestId === incomeInvoiceRequest && $("#income-dialog").open) {
       incomeInvoiceResults = [];
-      updateIncomeInvoiceSelection();
-      toast("Unable to search invoices: " + error.message, true);
+      const list = $("#income-invoice-results");
+      const message = document.createElement("div");
+      message.className = "income-invoice-empty";
+      message.textContent = "Unable to load invoices: " + error.message;
+      list.replaceChildren(message);
+      showIncomeInvoiceResults();
+      $("#income-invoice-balance").textContent = "Invoice search is unavailable. Try again.";
     }
-  } finally {
-    if (requestId === incomeInvoiceRequest) select.disabled = false;
   }
 }
 
 function updateIncomeInvoiceSelection() {
   const form = $("#income-form");
-  const invoice = incomeInvoiceResults.find((i) => i.id === form.elements.invoiceId.value);
+  const invoice = incomeInvoiceResults.find((entry) => entry.id === form.elements.invoiceId.value && entry.status !== "draft");
   const selected = Boolean(invoice);
   if (!selected && incomeInvoicePreviouslySelected) form.elements.amount.value = "";
   incomeInvoicePreviouslySelected = invoice?.id || "";
-  const partialGroup = $("#income-partial-group");
-  partialGroup.classList.toggle("hidden", !selected);
+  $("#income-partial-group").classList.toggle("hidden", !selected);
   $("#income-description-group").classList.toggle("hidden", selected);
+  $("#income-selected").classList.toggle("hidden", !selected);
   form.elements.description.required = !selected;
   form.elements.description.disabled = selected;
   if (!selected) {
     form.elements.partialPayment.checked = false;
     form.elements.amount.readOnly = false;
     form.elements.amount.removeAttribute("max");
+    $("#income-selected").textContent = "";
     $("#income-invoice-balance").textContent = incomeInvoiceResults.length
-      ? "Leave Other income selected for a payment not linked to an invoice."
-      : ($("#income-invoice-search").value.trim()
-          ? "No matching outstanding invoices. Try another number or client name."
-          : "No outstanding issued invoices. You can still add other income.");
+      ? "Choose an invoice from the results, or record other income."
+      : "No unpaid invoices found. Other income is still available.";
     return;
   }
   const outstanding = Number(invoice.outstanding_cents);
@@ -1698,14 +1763,14 @@ function updateIncomeInvoiceSelection() {
   form.elements.amount.readOnly = true;
   form.elements.amount.max = (outstanding / 100).toFixed(2);
   form.elements.amount.value = (outstanding / 100).toFixed(2);
+  $("#income-selected").textContent = "Selected: " + invoice.number + " · " + invoice.client_name;
   $("#income-invoice-balance").textContent =
-    invoice.number + " · " + invoice.client_name + " · " +
-    money(outstanding) + " outstanding. Full payment will settle this invoice.";
+    money(outstanding) + " outstanding. Full payment settles this invoice.";
 }
 
 function updateIncomePartialPayment() {
   const form = $("#income-form");
-  const invoice = incomeInvoiceResults.find((i) => i.id === form.elements.invoiceId.value);
+  const invoice = incomeInvoiceResults.find((entry) => entry.id === form.elements.invoiceId.value);
   if (!invoice) return;
   const partial = form.elements.partialPayment.checked;
   const outstanding = Number(invoice.outstanding_cents);
@@ -1714,14 +1779,19 @@ function updateIncomePartialPayment() {
   form.elements.amount.value = partial ? "" : (outstanding / 100).toFixed(2);
   form.elements.amount.placeholder = partial ? "Less than " + money(outstanding) : "";
   $("#income-invoice-balance").textContent = partial
-    ? "Record less than " + money(outstanding) + ". The remaining balance stays open and searchable."
-    : "Full payment: " + money(outstanding) + ". The invoice will leave the search list once settled.";
+    ? "Enter less than " + money(outstanding) + ". The remainder stays searchable."
+    : "Full payment: " + money(outstanding) + ". The invoice leaves search when paid.";
 }
 
 function openIncomeDialog(item = null) {
   const form = $("#income-form");
+  clearTimeout(incomeInvoiceSearchTimer);
+  ++incomeInvoiceRequest;
+  incomeInvoiceResults = [];
+  incomeInvoicePreviouslySelected = "";
   form.reset();
   form.elements.id.value = item?.id || "";
+  form.elements.invoiceId.value = "";
   form.elements.description.value = item?.description || "";
   form.elements.description.disabled = false;
   form.elements.description.required = true;
@@ -1734,27 +1804,42 @@ function openIncomeDialog(item = null) {
   $("#save-income-button").textContent = item ? "Save changes" : "Add income";
   $("#income-invoice-picker").classList.toggle("hidden", Boolean(item));
   $("#income-entry-hint").classList.toggle("hidden", Boolean(item));
-  incomeInvoiceResults = [];
-  incomeInvoicePreviouslySelected = "";
-  ++incomeInvoiceRequest;
   $("#income-invoice-search").value = "";
-  $("#income-invoice-select").replaceChildren(new Option("Other income — not linked to an invoice", ""));
-  $("#income-invoice-select").value = "";
+  $("#income-invoice-results").replaceChildren();
+  hideIncomeInvoiceResults();
   $("#income-partial-group").classList.add("hidden");
+  $("#income-selected").classList.add("hidden");
   $("#income-dialog").showModal();
   if (!item) void refreshIncomeInvoiceChoices();
 }
 
 $("#income-invoice-search").addEventListener("input", () => {
   clearTimeout(incomeInvoiceSearchTimer);
-  // Clear the selected invoice before searching again so a stale selection
-  // cannot silently allocate cash to a different customer.
-  $("#income-invoice-select").value = "";
+  ++incomeInvoiceRequest; // invalidate any in-flight request immediately
+  $("#income-invoice-id").value = "";
   updateIncomeInvoiceSelection();
-  incomeInvoiceSearchTimer = setTimeout(refreshIncomeInvoiceChoices, 180);
+  $("#income-invoice-balance").textContent = "Searching invoices…";
+  incomeInvoiceSearchTimer = setTimeout(refreshIncomeInvoiceChoices, 160);
 });
-$("#income-invoice-select").addEventListener("change", updateIncomeInvoiceSelection);
-$("#income-partial-payment").addEventListener("change", updateIncomePartialPayment);
+$("#income-invoice-search").addEventListener("focus", () => {
+  if ($("#income-dialog").open && !$("#income-invoice-results").children.length)
+    void refreshIncomeInvoiceChoices();
+  else showIncomeInvoiceResults();
+});
+$("#income-invoice-search").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") { hideIncomeInvoiceResults(); return; }
+  if (event.key === "ArrowDown") {
+    const first = $("#income-invoice-results").querySelector(".income-invoice-option");
+    if (first) { event.preventDefault(); first.focus(); }
+  }
+});
+$("#income-show-invoices").addEventListener("click", () => {
+  $("#income-invoice-search").value = "";
+  $("#income-invoice-id").value = "";
+  updateIncomeInvoiceSelection();
+  void refreshIncomeInvoiceChoices();
+  $("#income-invoice-search").focus();
+});
 
 function renderIncome() {
   $("#income-empty").classList.toggle("hidden", state.income.length > 0);
