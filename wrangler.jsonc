@@ -5,6 +5,12 @@
   "compatibility_date": "2026-10-07",
   "workers_dev": true,
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "app.clientstream.io",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
