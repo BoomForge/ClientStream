@@ -82,3 +82,24 @@ jobs:
           fi
 
           echo "Configured $count ClientStream runtime values without exposing their contents."
+
+      - name: Verify email provider accepts a real error report
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The submission contains no personal data. A 201 means the
+          # production Worker has accepted the report and Resend accepted mail.
+          # This verifies more than checking the presence of an API key.
+          sleep 5
+          status="$(curl --silent --show-error --max-time 25 \
+            --output /tmp/clientstream-email-smoke.json \
+            --write-out '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -X POST \
+            --data '{"issueType":"Other","summary":"Email delivery setup test","details":"Automated smoke test of ClientStream error reporting. No user action is needed.","steps":"","email":"","pageUrl":"","website":""}' \
+            'https://clientstream.theevansorrell.workers.dev/api/error-reports')"
+          if [[ "$status" != "201" ]]; then
+            echo "::error::Production error report email was not accepted (HTTP $status). Check the verified Resend sender/domain, key permissions and live Worker secrets."
+            exit 1
+          fi
+          echo "Production error report accepted by the email provider."
