@@ -8,7 +8,8 @@ import { cancelJob, createJob, listJobs, updateJob } from "./jobs";
 import { createExpense, deleteExpense, listExpenses } from "./expenses";
 import { createInvoice, getInvoice, listInvoices, recordPayment, updateInvoice } from "./invoices";
 import { convertQuote, createQuote, getQuote, listQuotes, updateQuote } from "./quotes";
-import { squareWebhook } from "./square";
+import { paypalWebhook } from "./paypal-webhook";
+import { paypalConfig } from "./paypal";
 import { billingStatus, cancelBilling, createCheckout, reconcileBilling } from "./billing";
 import { emailConfigured } from "./email";
 import { sendInvoiceEmail, sendQuoteEmail } from "./document-email";
@@ -34,7 +35,7 @@ async function api(request: Request, env: Env): Promise<Response> {
     if (limited) return limited;
   } else if (
     ["POST", "PATCH", "DELETE"].includes(request.method) &&
-    path !== "/api/webhooks/square"
+    path !== "/api/webhooks/paypal"
   ) {
     const limited = await enforceMutationRateLimit(request, env);
     if (limited) return limited;
@@ -54,8 +55,8 @@ async function api(request: Request, env: Env): Promise<Response> {
       environment: env.APP_ENV ?? "unknown",
       database: "bound",
       databaseReady: true,
-      squareWebhook: env.SQUARE_WEBHOOK_SIGNATURE_KEY ? "configured" : "unconfigured",
-      squareBilling: env.SQUARE_ACCESS_TOKEN && env.SQUARE_LOCATION_ID && env.SQUARE_PRO_PLAN_VARIATION_ID ? "configured" : "unconfigured",
+      paypalWebhook: paypalConfig(env)?.webhookId ? "configured" : "unconfigured",
+      paypalBilling: paypalConfig(env) ? "configured" : "unconfigured",
       transactionalEmail: emailConfigured(env) ? "configured" : "unconfigured",
       workersAI: env.AI ? "configured" : "unconfigured",
       timestamp: new Date().toISOString()
@@ -166,7 +167,7 @@ async function api(request: Request, env: Env): Promise<Response> {
   if (request.method === "POST" && path === "/api/billing/reconcile") return reconcileBilling(request, env);
   if (request.method === "POST" && path === "/api/billing/cancel") return cancelBilling(request, env);
 
-  if (request.method === "POST" && path === "/api/webhooks/square") return squareWebhook(request, env);
+  if (request.method === "POST" && path === "/api/webhooks/paypal") return paypalWebhook(request, env);
 
   return json({ error: "Not found." }, { status: 404 });
 }
