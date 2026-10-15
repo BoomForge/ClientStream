@@ -421,3 +421,13 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   .sidebar-upgrade { width: 100%; margin: 0; padding: 9px 5px; font-size: .7rem; justify-content: center; }
   .sidebar-upgrade span { display: none; }
 }
+
+.settings-section-title { margin: 6px 0 2px; }
+.settings-section-title h4, .brand-logo-settings h4 { margin: 0 0 6px; font-size: 1rem; color: var(--ink); }
+.settings-section-title p, .brand-logo-settings p { margin: 0; color: var(--muted); line-height: 1.5; font-size: .85rem; }
+.settings-section-title:not(:first-child) { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 12px; }
+.brand-logo-settings { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #f8fbff; }
+.brand-logo-settings label { min-width: 0; }
+.brand-logo-settings input { max-width: 100%; padding: 10px; }
+.logo-preview { max-width: 180px; max-height: 90px; object-fit: contain; }
+.brand-logo-settings button { justify-self: start; }
