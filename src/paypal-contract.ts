@@ -21,7 +21,7 @@ export interface PayPalSubscription {
   subscriber?: { email_address?: string; payer_id?: string };
   billing_info?: {
     next_billing_time?: string;
-    last_payment?: { time?: string };
+    last_payment?: { time?: string; amount?: { value?: string; currency_code?: string } };
     failed_payments_count?: number;
   };
   links?: Array<{ rel?: string; href?: string }>;
@@ -66,4 +66,15 @@ export function approvedPayPalUrl(value: string | undefined, mode: "sandbox" | "
   } catch {
     return null;
   }
+}
+
+/** Pro requires a paid first cycle, not merely an approved recurring mandate. */
+export function hasConfirmedProPayment(subscription: PayPalSubscription): boolean {
+  const last = subscription.billing_info?.last_payment;
+  const timestamp = last?.time ? Date.parse(last.time) : NaN;
+  return subscription.status === "ACTIVE" &&
+    Number.isFinite(timestamp) &&
+    timestamp <= Date.now() + 300_000 &&
+    last?.amount?.currency_code === "AUD" &&
+    last?.amount?.value === "9.99";
 }
