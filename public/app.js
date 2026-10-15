@@ -1775,7 +1775,7 @@ function updateIncomePartialPayment() {
   const partial = form.elements.partialPayment.checked;
   const outstanding = Number(invoice.outstanding_cents);
   form.elements.amount.readOnly = !partial;
-  form.elements.amount.max = (partial ? Math.max(0, outstanding - 1) : outstanding).toFixed(2);
+  form.elements.amount.max = ((partial ? Math.max(0, outstanding - 1) : outstanding) / 100).toFixed(2);
   form.elements.amount.value = partial ? "" : (outstanding / 100).toFixed(2);
   form.elements.amount.placeholder = partial ? "Less than " + money(outstanding) : "";
   $("#income-invoice-balance").textContent = partial
