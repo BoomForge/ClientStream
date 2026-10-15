@@ -29,3 +29,9 @@ th:nth-child(n+2), td:nth-child(n+2) { text-align: right; }
 .error { max-width: 900px; margin: 40px auto; color: #8b2222; background: #ffe9e9; padding: 18px; border-radius: 10px; }
 @media print { body { padding: 0; background: #fff; } .toolbar { display: none; } .paper { width: 100%; min-height: 0; padding: 24px; box-shadow: none; } }
 @media (max-width: 650px) { body { padding: 0; } .toolbar { padding: 10px; margin: 0; } .paper { padding: 24px 18px; min-height: 100vh; box-shadow: none; } .meta { grid-template-columns: 1fr; } .meta-right { text-align: left; } }
+
+.business-logo { max-width: 92px; max-height: 64px; object-fit: contain; }
+.brand { min-width: 0; overflow-wrap: anywhere; }
+.meta p { white-space: pre-line; overflow-wrap: anywhere; }
+#payment-instructions { white-space: pre-wrap; }
+.notes { break-inside: avoid; page-break-inside: avoid; margin-top: 22px; }
