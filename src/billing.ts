@@ -121,6 +121,19 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
   if (!planMatchesClientStream(plan, config.planId))
     return json({ error: "PayPal plan must be active at exactly A$9.99 per month before checkout.", code: "PLAN_MISMATCH" }, { status: 503 });
 
+  const nowLock = new Date();
+  // A D1 uniqueness claim prevents two concurrent tabs creating two paid plans.
+  await env.DB.prepare(
+    "DELETE FROM paypal_checkout_claims WHERE business_id = ? AND expires_at <= ?"
+  ).bind(business.id, nowLock.toISOString()).run();
+  const claimId = crypto.randomUUID();
+  const claim = await env.DB.prepare(
+    "INSERT OR IGNORE INTO paypal_checkout_claims (business_id, claim_id, expires_at) VALUES (?, ?, ?)"
+  ).bind(business.id, claimId, new Date(nowLock.getTime() + 120_000).toISOString()).run();
+  if (claim.meta.changes !== 1) {
+    return json({ error: "PayPal checkout is already being prepared for this business. Try again shortly." }, { status: 409 });
+  }
+  try {
   const origin = new URL(request.url).origin;
   const result = await paypalCall<PayPalSubscription>(
     env,
@@ -156,6 +169,11 @@ export async function createCheckout(request: Request, env: Env): Promise<Respon
     ).bind(crypto.randomUUID(), business.id, result.id, now, now).run();
   }
   return json({ checkoutUrl });
+  } finally {
+    await env.DB.prepare(
+      "DELETE FROM paypal_checkout_claims WHERE business_id = ? AND claim_id = ?"
+    ).bind(business.id, claimId).run();
+  }
 }
 
 export async function reconcileBilling(request: Request, env: Env): Promise<Response> {
