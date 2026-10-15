@@ -29,6 +29,14 @@ async function load() {
 
   document.title = (type === "invoice" ? "Invoice " : "Quote ") + doc.number;
   setText("#business-name", doc.business_name || "ClientStream");
+  if (doc.business_logo_data_url && /^data:image\/(png|jpeg);base64,/.test(doc.business_logo_data_url)) {
+    $("#business-logo").src = doc.business_logo_data_url;
+    $("#business-logo").classList.remove("hidden");
+    $("#fallback-logo").classList.add("hidden");
+  }
+  setText("#business-contact", doc.business_contact_name ? "Contact: " + doc.business_contact_name : "");
+  setText("#business-website", doc.business_website);
+
   setText("#business-abn", doc.business_abn ? "ABN: " + doc.business_abn : "");
   setText("#business-email", doc.business_email);
   setText("#business-phone", doc.business_phone);
@@ -76,6 +84,15 @@ async function load() {
     setText("#balance", money(Math.max(0, doc.total_cents - doc.amount_paid_cents)));
   }
 
+  if (type === "invoice" && (doc.payment_instructions ||
+      (doc.bank_account_name && doc.bank_bsb && doc.bank_account_number))) {
+    $("#payment-details").classList.remove("hidden");
+    setText("#bank-account-name", doc.bank_account_name ? "Account name: " + doc.bank_account_name : "");
+    setText("#bank-bsb", doc.bank_bsb ? "BSB: " + doc.bank_bsb : "");
+    setText("#bank-account-number", doc.bank_account_number ? "Account number: " + doc.bank_account_number : "");
+    setText("#payment-instructions", doc.payment_instructions || "");
+  }
+  
   if (doc.notes) {
     $("#notes-section").classList.remove("hidden");
     setText("#notes", doc.notes);

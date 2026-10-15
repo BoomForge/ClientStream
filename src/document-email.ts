@@ -12,6 +12,13 @@ interface DocumentRow {
   client_name: string;
   client_email: string | null;
   business_name: string;
+  business_contact_name?: string | null;
+  business_email?: string | null;
+  business_phone?: string | null;
+  payment_instructions?: string | null;
+  bank_account_name?: string | null;
+  bank_bsb?: string | null;
+  bank_account_number?: string | null;
   subtotal_cents: number;
   tax_cents: number;
   total_cents: number;
@@ -61,6 +68,18 @@ function emailHtml(
        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1e3a8a;color:#1e3a8a"><span>Balance</span><strong>${escapeHtml(moneyEmail(Math.max(0, document.total_cents - (document.amount_paid_cents ?? 0))))}</strong></div>`
     : "";
 
+  const bank = type === "invoice" && document.bank_account_name && document.bank_bsb && document.bank_account_number
+    ? "<p style=\"white-space:pre-wrap;line-height:1.6\">Account: " + escapeHtml(document.bank_account_name) +
+      "<br>BSB: " + escapeHtml(document.bank_bsb) +
+      "<br>Number: " + escapeHtml(document.bank_account_number) + "</p>" : "";
+  const paymentInstructions = type === "invoice" && document.payment_instructions
+    ? "<p style=\"white-space:pre-wrap;line-height:1.6\">" + escapeHtml(document.payment_instructions) + "</p>" : "";
+  const paymentSection = bank || paymentInstructions
+    ? "<div style=\"margin-top:24px;border-top:1px solid #dbe4ef;padding-top:18px\"><strong>How to pay this invoice</strong>" +
+      bank + paymentInstructions + "</div>" : "";
+  const businessContact = [document.business_contact_name, document.business_phone, document.business_email]
+    .filter(Boolean).map((value) => escapeHtml(value)).join(" · ");
+
   const notes = document.notes
     ? `<div style="margin-top:28px;padding-top:18px;border-top:1px solid #dbe4ef"><div style="font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:.06em">Notes</div><p style="white-space:pre-wrap;color:#5b677a;line-height:1.6">${escapeHtml(document.notes)}</p></div>`
     : "";
@@ -71,7 +90,7 @@ function emailHtml(
   <div style="max-width:720px;margin:0 auto;padding:28px 14px">
     <div style="background:#fff;border:1px solid #dbe4ef;border-radius:18px;padding:28px">
       <div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding-bottom:22px;border-bottom:3px solid #1e3a8a">
-        <div><strong style="font-size:20px;color:#1e3a8a">${escapeHtml(document.business_name)}</strong></div>
+        <div><strong style="font-size:20px;color:#1e3a8a">${escapeHtml(document.business_name)}</strong><div style="font-size:12px;color:#64748b;padding-top:6px">${businessContact}</div></div>
         <div style="text-align:right"><div style="color:#64748b;text-transform:uppercase;font-size:12px">${title}</div><strong style="color:#1e3a8a">${escapeHtml(document.number)}</strong></div>
       </div>
       <div style="display:flex;justify-content:space-between;gap:20px;margin:24px 0">
@@ -93,6 +112,7 @@ function emailHtml(
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1e3a8a;color:#1e3a8a"><span>Total</span><strong>${escapeHtml(moneyEmail(document.total_cents))}</strong></div>
         ${paid}
       </div>
+      ${paymentSection}
       ${notes}
       <p style="margin-top:30px;color:#94a3b8;font-size:12px">Sent with ClientStream.</p>
     </div>
@@ -123,7 +143,7 @@ async function sendDocument(request: Request, env: Env, type: DocumentType): Pro
   const table = type === "quote" ? "quotes" : "invoices";
   const itemTable = type === "quote" ? "quote_items" : "invoice_items";
   const document = await env.DB.prepare(
-    `SELECT d.id, d.number, d.status, c.name AS client_name, c.email AS client_email, b.name AS business_name,
+    `SELECT d.id, d.number, d.status, c.name AS client_name, c.email AS client_email, b.name AS business_name, b.contact_name AS business_contact_name, b.business_email, b.business_phone, b.bank_account_name, b.bank_bsb, b.bank_account_number, b.payment_instructions,
             d.subtotal_cents, d.tax_cents, d.total_cents,
             ${type === "invoice" ? "d.amount_paid_cents" : "0 AS amount_paid_cents"},
             ${type === "invoice" ? "d.due_at" : "NULL AS due_at"},
@@ -150,7 +170,12 @@ async function sendDocument(request: Request, env: Env, type: DocumentType): Pro
     to: document.client_email,
     subject: `${title} ${document.number} from ${document.business_name}`,
     html: emailHtml(type, document, items.results ?? []),
-    text: `${title} ${document.number} from ${document.business_name}. Total: ${moneyEmail(document.total_cents)}.`
+    text: `${title} ${document.number} from ${document.business_name}. Total: ${moneyEmail(document.total_cents)}.${type === "invoice" ? "\\n" + [
+      document.bank_account_name ? "Account name: " + document.bank_account_name : "",
+      document.bank_bsb ? "BSB: " + document.bank_bsb : "",
+      document.bank_account_number ? "Account number: " + document.bank_account_number : "",
+      document.payment_instructions || ""
+    ].filter(Boolean).join("\\n") : ""}`
   });
 
   const now = new Date().toISOString();

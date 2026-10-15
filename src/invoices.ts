@@ -60,7 +60,7 @@ export async function getInvoice(request: Request, env: Env): Promise<Response> 
   if (!id) return json({ error: "Invalid invoice id." }, { status: 400 });
 
   const invoice = await env.DB.prepare(
-    "SELECT i.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name, b.abn AS business_abn, b.business_email, b.business_phone, b.business_address FROM invoices i JOIN clients c ON c.id = i.client_id JOIN businesses b ON b.id = i.business_id WHERE i.id = ? AND i.business_id = ? LIMIT 1"
+    "SELECT i.*, c.name AS client_name, c.company AS client_company, c.email AS client_email, c.phone AS client_phone, c.address AS client_address, b.name AS business_name, b.abn AS business_abn, b.business_email, b.business_phone, b.business_address, b.contact_name AS business_contact_name, b.website_url AS business_website, b.logo_data_url AS business_logo_data_url, b.bank_account_name, b.bank_bsb, b.bank_account_number, b.payment_instructions FROM invoices i JOIN clients c ON c.id = i.client_id JOIN businesses b ON b.id = i.business_id WHERE i.id = ? AND i.business_id = ? LIMIT 1"
   ).bind(id, business.id).first();
 
   if (!invoice) return json({ error: "Invoice not found." }, { status: 404 });

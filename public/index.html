@@ -228,6 +228,7 @@
         <div class="panel settings-panel">
           <div class="panel-head"><div><p class="eyebrow">BUSINESS PROFILE</p><h3>Settings</h3></div></div>
           <form id="settings-form" class="settings-form">
+            <div class="settings-section-title"><h4>Business identity & contact</h4><p>These details appear on your quotes and invoices.</p></div>
             <div class="two-col">
               <label>Business name<input name="name" maxlength="120" required></label>
               <label>ABN<input name="abn" maxlength="30"></label>
@@ -236,8 +237,25 @@
               <label>Business email<input name="businessEmail" type="email"></label>
               <label>Business phone<input name="businessPhone" maxlength="60"></label>
             </div>
-            <label>Business address<textarea name="businessAddress" rows="3"></textarea></label>
+            <div class="two-col">
+              <label>Contact person<input name="contactName" maxlength="120" autocomplete="name" placeholder="Who should customers contact?"></label>
+              <label>Website<input name="websiteUrl" type="url" maxlength="1000" placeholder="https://yourbusiness.com.au"></label>
+            </div>
+            <label>Business address<textarea name="businessAddress" rows="3" maxlength="1000"></textarea></label>
+            <div class="brand-logo-settings">
+              <div><h4>Logo on quotes and invoices</h4><p>Upload a PNG or JPEG logo, maximum 100 KB. If none is supplied, your business name is displayed instead.</p></div>
+              <img id="logo-preview" alt="Your business logo preview" class="logo-preview hidden">
+              <label>Business logo<input id="business-logo-file" type="file" accept="image/png,image/jpeg"></label>
+              <button id="remove-business-logo" type="button" class="secondary small">Remove logo</button>
+            </div>
             <label>Google review link<input name="googleReviewUrl" type="url" placeholder="https://..."></label>
+            <div class="settings-section-title"><h4>Invoice payment details</h4><p>Optional payment instructions shown on customer invoices. Never enter card numbers, online banking passwords or login details.</p></div>
+            <label>Bank account name<input name="bankAccountName" maxlength="120" autocomplete="off"></label>
+            <div class="two-col">
+              <label>BSB (6 digits)<input name="bankBsb" inputmode="numeric" maxlength="7" placeholder="123-456" autocomplete="off"></label>
+              <label>Account number<input name="bankAccountNumber" inputmode="numeric" maxlength="15" autocomplete="off"></label>
+            </div>
+            <label>Other payment instructions<textarea name="paymentInstructions" maxlength="1200" rows="3" placeholder="e.g. PayID email, bank transfer reference, or another way to pay"></textarea></label>
             <label class="check-row"><input name="gstRegistered" type="checkbox"> <span>Registered for GST — default new quotes and invoices to add 10% GST</span></label>
             <p class="hint">The review link is used automatically by Smart Write when you create a review request.</p>
             <div><button class="primary" type="submit">Save business profile</button></div>
@@ -314,12 +332,13 @@
 
   <dialog id="job-dialog">
     <form id="job-form" method="dialog" class="dialog-form">
-      <div class="dialog-head"><h3>Add job</h3><button type="button" class="icon-button close-dialog">×</button></div>
+      <div class="dialog-head"><h3 id="job-dialog-title">Add job</h3><button type="button" class="icon-button close-dialog">×</button></div>
+       <input type="hidden" name="id">
       <label>Title<input name="title" required maxlength="180"></label>
       <label>Client<select name="clientId"><option value="">No client</option></select></label>
       <label>Scheduled for<input name="scheduledFor" type="datetime-local"></label>
       <label>Description<textarea name="description" rows="5"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit">Add job</button></div>
+      <div class="dialog-actions"><button type="button" class="secondary close-dialog">Cancel</button><button class="primary" type="submit" id="save-job-button">Save job</button></div>
     </form>
   </dialog>
 
