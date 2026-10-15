@@ -16,12 +16,11 @@ jobs:
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
       PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
       SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
-      SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
-      SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
-      SQUARE_PRO_PLAN_VARIATION_ID: ${{ secrets.SQUARE_PRO_PLAN_VARIATION_ID }}
-      SQUARE_WEBHOOK_SIGNATURE_KEY: ${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}
-      SQUARE_WEBHOOK_URL: ${{ secrets.SQUARE_WEBHOOK_URL }}
-      SQUARE_ENVIRONMENT: ${{ secrets.SQUARE_ENVIRONMENT }}
+      PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+      PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+      PAYPAL_PLAN_ID: ${{ secrets.PAYPAL_PLAN_ID }}
+      PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+      PAYPAL_ENVIRONMENT: ${{ secrets.PAYPAL_ENVIRONMENT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -52,12 +51,11 @@ jobs:
           put_secret EMAIL_FROM "$EMAIL_FROM"
           put_secret PUBLIC_APP_URL "$PUBLIC_APP_URL"
           put_secret SUPPORT_EMAIL "$SUPPORT_EMAIL"
-          put_secret SQUARE_ACCESS_TOKEN "$SQUARE_ACCESS_TOKEN"
-          put_secret SQUARE_LOCATION_ID "$SQUARE_LOCATION_ID"
-          put_secret SQUARE_PRO_PLAN_VARIATION_ID "$SQUARE_PRO_PLAN_VARIATION_ID"
-          put_secret SQUARE_WEBHOOK_SIGNATURE_KEY "$SQUARE_WEBHOOK_SIGNATURE_KEY"
-          put_secret SQUARE_WEBHOOK_URL "$SQUARE_WEBHOOK_URL"
-          put_secret SQUARE_ENVIRONMENT "$SQUARE_ENVIRONMENT"
+          put_secret PAYPAL_CLIENT_ID "$PAYPAL_CLIENT_ID"
+          put_secret PAYPAL_CLIENT_SECRET "$PAYPAL_CLIENT_SECRET"
+          put_secret PAYPAL_PLAN_ID "$PAYPAL_PLAN_ID"
+          put_secret PAYPAL_WEBHOOK_ID "$PAYPAL_WEBHOOK_ID"
+          put_secret PAYPAL_ENVIRONMENT "$PAYPAL_ENVIRONMENT"
 
           if [[ "$count" -eq 0 ]]; then
             echo "No optional runtime secrets were configured."
