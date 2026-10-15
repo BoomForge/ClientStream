@@ -36,7 +36,8 @@ export async function listIncome(request: Request, env: Env): Promise<Response> 
   return json({ income: rows.results ?? [] });
 }
 
-// Only issued invoices with an outstanding balance can be assigned income.
+// Search outstanding issued and draft invoices. Drafts are visible as guidance
+// but cannot be selected for receiving payment until formally marked sent.
 // Search on the server, so Pro customers with more than 500 invoices can find
 // older receivables rather than relying on the dashboard's recent-invoice list.
 export async function availableIncomeInvoices(request: Request, env: Env): Promise<Response> {
@@ -49,7 +50,7 @@ export async function availableIncomeInvoices(request: Request, env: Env): Promi
     "SELECT i.id, i.number, i.status, c.name AS client_name, " +
     "(i.total_cents - i.amount_paid_cents) AS outstanding_cents " +
     "FROM invoices i JOIN clients c ON c.id = i.client_id " +
-    "WHERE i.business_id = ? AND i.status IN ('sent','part_paid','overdue') " +
+    "WHERE i.business_id = ? AND i.status IN ('draft','sent','part_paid','overdue') " +
     "AND i.total_cents > i.amount_paid_cents " +
     "AND (? = '' OR instr(lower(i.number),lower(?)) > 0 " +
     "OR instr(lower(c.name),lower(?)) > 0) " +

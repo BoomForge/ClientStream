@@ -340,6 +340,7 @@ export async function recordPayment(request: Request, env: Env): Promise<Respons
   }>();
 
   if (!invoice || invoice.status === "void") return json({ error: "Invoice not found." }, { status: 404 });
+  if (invoice.status === "draft") return json({ error: "Mark this invoice sent before recording income against it." }, { status: 409 });
 
   const outstanding = invoice.total_cents - invoice.amount_paid_cents;
   if (amountCents > outstanding) {
