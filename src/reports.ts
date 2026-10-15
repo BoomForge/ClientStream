@@ -82,7 +82,7 @@ export async function reportSummary(request: Request, env: Env): Promise<Respons
 
   const incomeByMonth = new Map((incomeMonths.results ?? []).map((r) => [r.month, r.total]));
   const expensesByMonth = new Map((expenseMonths.results ?? []).map((r) => [r.month, r.total]));
-  const month = new Date(range.from + "T12:00:00Z");
+  const month = new Date(range.from.slice(0, 7) + "-01T12:00:00Z");
   const monthEnd = range.to.slice(0,7);
   const cashFlow: Array<{ month: string; incomeCents: number; expenseCents: number; netCents: number }> = [];
   while (month.toISOString().slice(0,7) <= monthEnd) {
