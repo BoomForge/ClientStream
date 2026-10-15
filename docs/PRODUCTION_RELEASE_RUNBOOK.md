@@ -10,7 +10,7 @@ Status: **release blocked pending live acceptance**. Keep the `clientstream.io` 
 4. Configure `PUBLIC_APP_URL`, Resend sender and DNS only using GitHub Actions secrets, then perform verification/recovery delivery tests with real mailboxes. Test expired and reused tokens.
 5. Complete client/job/multi-line-GST quote/invoice/partial and full payment/expense/reminder/export/deletion journeys, two-business isolation, mobile and keyboard tests.
 6. Benchmark PBKDF2 iterations on the actual deployed Worker plan before increasing the target. Keep the stored per-row iterations authoritative.
-7. Confirm Square sandbox subscription lifecycle and webhook idempotency before configuring real billing. Free must work without Square.
+7. Confirm PayPal Sandbox subscription lifecycle, plan price/currency/cadence, verified webhooks and replay safety before configuring real billing. Free must work without PayPal.
 8. Produce a real encrypted D1 backup and restore it into an isolated database; check representative rows. Confirm the decryption password is also recoverable outside GitHub.
 9. Confirm policies, ATO invoice compliance, monitored support and account-deletion/retention behaviour.
 10. Only after the application and transactional email are proven, cut over the original marketing Worker using its dedicated deployment workflow; smoke test root-domain CTAs and have rollback ready.
@@ -36,4 +36,4 @@ Record exact deployed SHA/version, CI/deploy workflow IDs, customer-journey test
 
 ## Current external prerequisites
 
-GitHub connector access does not provide direct Cloudflare DNS/Workers dashboard actions, GitHub Actions secret values or Square/Resend account provisioning. Do not fabricate completion. Do not push secrets into repository files. A successful CI dry-run is not a substitute for a live deployment/smoke test.
+GitHub connector access does not provide direct Cloudflare DNS/Workers dashboard actions, GitHub Actions secret values or PayPal/Resend account provisioning. Do not fabricate completion. Do not push secrets into repository files. A successful CI dry-run is not a substitute for a live deployment/smoke test.
