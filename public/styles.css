@@ -321,3 +321,78 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+
+/* Consistent inset space for record controls (clients, jobs, quotes and invoices). */
+.record-filters {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.record-filters .two-col { min-width: 0; }
+.record-filters label { min-width: 0; }
+.record-filters input, .record-filters select { min-width: 0; }
+.panel-head > div { min-width: 0; }
+.panel-head h3 { overflow-wrap: anywhere; }
+.metric { min-width: 0; }
+.metric > strong { overflow-wrap: anywhere; }
+
+/* Compact, accessible, seven-day KPI bar charts. Only observed days render bars. */
+.metric-trend {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #edf2f8;
+}
+.metric-trend-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+}
+.metric-trend-change { color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.metric-bars {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(5px, .75vw, 12px);
+  align-items: end;
+  height: 53px;
+}
+.metric-bar-slot {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+}
+.metric-bar {
+  width: min(100%, 22px);
+  border-radius: 5px 5px 2px 2px;
+  min-height: 3px;
+  background: #94c9ea;
+}
+.metric-bar.current { background: var(--navy); }
+.metric-bar.unrecorded {
+  height: 2px;
+  min-height: 2px;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+.metric-trend-dates {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .65rem;
+  padding-top: 5px;
+}
+@media (max-width: 640px) {
+  .record-filters { padding: 16px; gap: 12px; }
+  .metric { padding: 15px; }
+  .metric-bars { gap: 5px; }
+  .metric-trend-heading { flex-wrap: wrap; }
+}

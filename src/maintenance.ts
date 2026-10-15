@@ -1,4 +1,5 @@
 import { calendarDateInZone } from "./local-date";
+import { captureDailyDashboardMetrics } from "./dashboard";
 import type { Env } from "./types";
 import { brandedEmail, emailConfigured, sendEmail } from "./email";
 
@@ -191,6 +192,8 @@ async function emailDueReminders(env: Env, now: string): Promise<void> {
 
 export async function runMaintenance(env: Env): Promise<void> {
   const now = new Date().toISOString();
+  // Record real business-local daily totals even when nobody logs in.
+  await captureDailyDashboardMetrics(env, new Date(now));
   await cleanupExpiredSecurityRecords(env, now);
   await refreshDocumentStates(env, now);
   await createAutomaticReminders(env, now);

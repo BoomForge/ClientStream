@@ -774,17 +774,81 @@ async function loadDashboard() {
   }
 }
 
+// Each date comes from a recorded business-local observation. Missing dates are
+// not treated as zero, because doing so would invent historical activity.
+function renderMetricTrend(points, key, currency, label) {
+  const section = document.createElement("div");
+  section.className = "metric-trend";
+  const heading = document.createElement("div");
+  heading.className = "metric-trend-heading";
+  const period = document.createElement("span");
+  period.textContent = "LAST 7 DAYS";
+  const change = document.createElement("span");
+  change.className = "metric-trend-change";
+
+  const previous = points.slice(0, -1).filter((row) => Number.isFinite(row?.[key]));
+  const latest = points.at(-1);
+  if (previous.length && latest && Number.isFinite(latest[key])) {
+    const diff = latest[key] - previous.at(-1)[key];
+    const formatted = currency ? money(Math.abs(diff)) : String(Math.abs(diff));
+    change.textContent = diff === 0 ? "No change" : (diff > 0 ? "+" : "−") + formatted;
+    change.title = "Change since last recorded day";
+  } else {
+    change.textContent = "Tracking from today";
+  }
+  heading.append(period, change);
+
+  const bars = document.createElement("div");
+  bars.className = "metric-bars";
+  bars.setAttribute("role", "img");
+  bars.setAttribute("aria-label", label + " daily totals: " + points.map((row) => {
+    const value = row?.[key];
+    return (row?.date || "Unknown") + " " + (Number.isFinite(value)
+      ? (currency ? money(value) : String(value)) : "not recorded");
+  }).join(", "));
+
+  const observed = points.map((row) => row?.[key]).filter((value) => Number.isFinite(value));
+  const maximum = Math.max(1, ...observed);
+  for (const [index, point] of points.entries()) {
+    const slot = document.createElement("div");
+    slot.className = "metric-bar-slot";
+    const bar = document.createElement("div");
+    const value = point?.[key];
+    const recorded = Number.isFinite(value);
+    bar.className = "metric-bar" + (index === points.length - 1 ? " current" : "") + (!recorded ? " unrecorded" : "");
+    if (recorded) {
+      bar.style.height = Math.max(3, Math.round((Math.max(0, value) / maximum) * 100)) + "%";
+    }
+    slot.title = (point?.date || "Unknown") + ": " + (recorded
+      ? currency ? money(value) : String(value)
+      : "No recorded data");
+    slot.append(bar);
+    bars.append(slot);
+  }
+
+  const dates = document.createElement("div");
+  dates.className = "metric-trend-dates";
+  const first = document.createElement("span");
+  first.textContent = points[0]?.date ? dateText(points[0].date) : "Start";
+  const last = document.createElement("span");
+  last.textContent = "Today";
+  dates.append(first, last);
+  section.append(heading, bars, dates);
+  return section;
+}
+
 function renderDashboard() {
   const metrics = state.dashboard?.metrics || {};
+  const points = state.dashboard?.trend || [];
   const definitions = [
-    ["Active clients", metrics.clients || 0],
-    ["Open jobs", metrics.openJobs || 0],
-    ["Outstanding", money(metrics.outstandingCents)],
-    ["Expenses", money(metrics.expenseCents)]
+    ["Active clients", metrics.clients || 0, "clients", false],
+    ["Open jobs", metrics.openJobs || 0, "openJobs", false],
+    ["Outstanding", money(metrics.outstandingCents), "outstandingCents", true],
+    ["Expenses", money(metrics.expenseCents), "expenseCents", true]
   ];
 
   const grid = $("#metric-grid");
-  grid.replaceChildren(...definitions.map(([label, value]) => {
+  grid.replaceChildren(...definitions.map(([label, value, key, currency]) => {
     const card = document.createElement("article");
     card.className = "metric";
     const name = document.createElement("span");
@@ -792,6 +856,7 @@ function renderDashboard() {
     const strong = document.createElement("strong");
     strong.textContent = String(value);
     card.append(name, strong);
+    if (points.length) card.append(renderMetricTrend(points, key, currency, label));
     return card;
   }));
 
