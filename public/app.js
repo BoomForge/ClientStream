@@ -1739,48 +1739,74 @@ async function refreshIncomeInvoiceChoices() {
 
 function updateIncomeInvoiceSelection() {
   const form = $("#income-form");
-  const invoice = incomeInvoiceResults.find((entry) => entry.id === form.elements.invoiceId.value && entry.status !== "draft");
+  const invoice = incomeInvoiceResults.find((entry) =>
+    entry.id === form.elements.invoiceId.value && entry.status !== "draft");
   const selected = Boolean(invoice);
-  if (!selected && incomeInvoicePreviouslySelected) form.elements.amount.value = "";
-  incomeInvoicePreviouslySelected = invoice?.id || "";
+  const switchedInvoice = incomeInvoicePreviouslySelected !== (invoice?.id || "");
+
   $("#income-partial-group").classList.toggle("hidden", !selected);
   $("#income-description-group").classList.toggle("hidden", selected);
   $("#income-selected").classList.toggle("hidden", !selected);
   form.elements.description.required = !selected;
   form.elements.description.disabled = selected;
+
+  // Always allow typing. The selected invoice defines allowed amounts, but a
+  // partial payment must never depend on a fragile readonly toggle.
+  const amount = form.elements.amount;
+  amount.readOnly = false;
+  amount.disabled = false;
+  amount.removeAttribute("readonly");
+  amount.removeAttribute("disabled");
+
   if (!selected) {
+    if (incomeInvoicePreviouslySelected) amount.value = "";
+    incomeInvoicePreviouslySelected = "";
     form.elements.partialPayment.checked = false;
-    form.elements.amount.readOnly = false;
-    form.elements.amount.removeAttribute("max");
+    amount.removeAttribute("max");
     $("#income-selected").textContent = "";
     $("#income-invoice-balance").textContent = incomeInvoiceResults.length
       ? "Choose an invoice from the results, or record other income."
       : "No unpaid invoices found. Other income is still available.";
     return;
   }
+
   const outstanding = Number(invoice.outstanding_cents);
-  form.elements.partialPayment.checked = false;
-  form.elements.amount.readOnly = true;
-  form.elements.amount.max = (outstanding / 100).toFixed(2);
-  form.elements.amount.value = (outstanding / 100).toFixed(2);
+  if (switchedInvoice) {
+    form.elements.partialPayment.checked = false;
+    amount.value = (outstanding / 100).toFixed(2);
+  }
+  incomeInvoicePreviouslySelected = invoice.id;
+  const partial = form.elements.partialPayment.checked;
+  amount.max = ((partial ? Math.max(0, outstanding - 1) : outstanding) / 100).toFixed(2);
   $("#income-selected").textContent = "Selected: " + invoice.number + " · " + invoice.client_name;
-  $("#income-invoice-balance").textContent =
-    money(outstanding) + " outstanding. Full payment settles this invoice.";
+  $("#income-invoice-balance").textContent = partial
+    ? "Enter less than " + money(outstanding) + ". The remainder stays searchable."
+    : money(outstanding) + " outstanding. Tick Partial payment for a smaller amount.";
 }
 
 function updateIncomePartialPayment() {
   const form = $("#income-form");
-  const invoice = incomeInvoiceResults.find((entry) => entry.id === form.elements.invoiceId.value);
+  const invoice = incomeInvoiceResults.find((entry) =>
+    entry.id === form.elements.invoiceId.value && entry.status !== "draft");
   if (!invoice) return;
   const partial = form.elements.partialPayment.checked;
   const outstanding = Number(invoice.outstanding_cents);
-  form.elements.amount.readOnly = !partial;
-  form.elements.amount.max = ((partial ? Math.max(0, outstanding - 1) : outstanding) / 100).toFixed(2);
-  form.elements.amount.value = partial ? "" : (outstanding / 100).toFixed(2);
-  form.elements.amount.placeholder = partial ? "Less than " + money(outstanding) : "";
+  const amount = form.elements.amount;
+
+  // Leave this input editable in BOTH modes so checking Partial payment can
+  // never leave it locked, even after a delayed invoice search refresh.
+  amount.readOnly = false;
+  amount.disabled = false;
+  amount.removeAttribute("readonly");
+  amount.removeAttribute("disabled");
+  amount.max = ((partial ? Math.max(0, outstanding - 1) : outstanding) / 100).toFixed(2);
+  amount.value = partial ? "" : (outstanding / 100).toFixed(2);
+  amount.placeholder = partial ? "Less than " + money(outstanding) : "";
   $("#income-invoice-balance").textContent = partial
     ? "Enter less than " + money(outstanding) + ". The remainder stays searchable."
     : "Full payment: " + money(outstanding) + ". The invoice leaves search when paid.";
+
+  if (partial) amount.focus();
 }
 
 function openIncomeDialog(item = null) {
