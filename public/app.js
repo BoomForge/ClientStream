@@ -309,23 +309,30 @@ function renderBilling() {
   const subscription = billing.subscription;
 
   $("#billing-plan").textContent = isPro ? "Pro plan" : "Free plan";
+  if (billing.environment === "sandbox") {
+    $("#billing-copy").textContent = "PayPal Sandbox mode. No real charges will be made.";
+  }
+
   $("#upgrade-button").classList.toggle("hidden", isPro);
   $("#cancel-billing").classList.toggle("hidden", !isPro || subscription?.cancelAtPeriodEnd);
   $("#reconcile-billing").classList.add("hidden");
 
   if (!configured && !isPro) {
     $("#upgrade-button").disabled = true;
-    $("#upgrade-button").textContent = "Square setup pending";
-    $("#billing-copy").textContent = "Your Free plan is active. Pro checkout will appear here as soon as Square is connected.";
+    $("#upgrade-button").textContent = "PayPal setup pending";
+    $("#billing-copy").textContent = "Your Free plan is active. Pro checkout will appear when PayPal subscriptions and verified webhooks are configured.";
     return;
   }
 
   $("#upgrade-button").disabled = false;
   $("#upgrade-button").textContent = "Upgrade to Pro";
+  $("#reconcile-billing").classList.toggle("hidden",
+    !(subscription && ["pending", "past_due"].includes(subscription.status)));
+
 
   if (isPro) {
-    const end = subscription?.currentPeriodEnd ? " Current paid period: " + dateText(subscription.currentPeriodEnd) + "." : "";
-    const cancelling = subscription?.cancelAtPeriodEnd ? " Cancellation is scheduled." : "";
+    const end = subscription?.currentPeriodEnd ? " Next scheduled renewal: " + dateText(subscription.currentPeriodEnd) + "." : "";
+    const cancelling = "";
     $("#billing-copy").textContent = "Unlimited clients and invoices, plus Pro features." + end + cancelling;
   } else {
     $("#billing-copy").textContent = "Up to 10 active clients and 10 invoices. Pro is A$9.99/month with unlimited clients and invoices.";
@@ -334,13 +341,19 @@ function renderBilling() {
 
 async function handleBillingReturn() {
   const url = new URL(location.href);
+  if (url.searchParams.get("billing") === "cancelled") {
+    url.searchParams.delete("billing");
+    history.replaceState({}, "", url.pathname + url.search + url.hash);
+    toast("PayPal subscription approval was cancelled.");
+    return;
+  }
   if (url.searchParams.get("billing") !== "success") return;
 
   url.searchParams.delete("billing");
   history.replaceState({}, "", url.pathname + url.search + url.hash);
 
   $("#reconcile-billing").classList.remove("hidden");
-  toast("Square checkout completed. Checking your Pro subscription…");
+  toast("PayPal approval received. Verifying your subscription…");
 
   try {
     const result = await api("/api/billing/reconcile", { method: "POST" });
@@ -350,7 +363,7 @@ async function handleBillingReturn() {
       $("#reconcile-billing").classList.add("hidden");
       toast("ClientStream Pro is active.");
     } else {
-      toast("Square is still finalising the subscription. Use Check payment in a moment.");
+      toast("PayPal is still activating your subscription. Use Check payment shortly.");
     }
   } catch (error) {
     toast(error.message, true);
@@ -360,7 +373,7 @@ async function handleBillingReturn() {
 $("#upgrade-button").addEventListener("click", async () => {
   try {
     $("#upgrade-button").disabled = true;
-    $("#upgrade-button").textContent = "Opening Square…";
+    $("#upgrade-button").textContent = "Opening PayPal…";
     const result = await api("/api/billing/checkout", { method: "POST" });
     location.href = result.checkoutUrl;
   } catch (error) {
@@ -374,7 +387,7 @@ $("#reconcile-billing").addEventListener("click", async () => {
   try {
     const result = await api("/api/billing/reconcile", { method: "POST" });
     if (!result.active) {
-      toast("No active Pro subscription is visible in Square yet.");
+      toast("No active ClientStream Pro subscription is confirmed by PayPal yet.");
       return;
     }
     await refreshIdentity();
@@ -387,11 +400,11 @@ $("#reconcile-billing").addEventListener("click", async () => {
 });
 
 $("#cancel-billing").addEventListener("click", async () => {
-  if (!confirm("Cancel ClientStream Pro at the end of the current paid period?")) return;
+  if (!confirm("Cancel ClientStream Pro now? Pro features will be disabled when PayPal confirms cancellation. This stops future renewals.")) return;
   try {
     await api("/api/billing/cancel", { method: "POST" });
     await loadBilling();
-    toast("Pro cancellation scheduled.");
+    toast("PayPal cancellation confirmed. Future renewals have stopped.");
   } catch (error) {
     toast(error.message, true);
   }

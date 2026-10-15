@@ -1,0 +1,63 @@
+name: Provision ClientStream PayPal
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "PayPal API credentials environment (sandbox recommended first)"
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - live
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clientstream-paypal-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    env:
+      PAYPAL_SETUP_MODE: ${{ inputs.mode }}
+      PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+      PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Validate connected account credentials
+        shell: bash
+        run: |
+          test -n "$PAYPAL_CLIENT_ID"
+          test -n "$PAYPAL_CLIENT_SECRET"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Reuse or create ClientStream Pro plan and webhook
+        id: merchant
+        run: node scripts/bootstrap-paypal-subscriptions.mjs
+      - name: Securely install PayPal configuration into Cloudflare
+        shell: bash
+        env:
+          PLAN_ID: ${{ steps.merchant.outputs.plan_id }}
+          WEBHOOK_ID: ${{ steps.merchant.outputs.webhook_id }}
+        run: |
+          set -euo pipefail
+          test -n "$PLAN_ID"
+          test -n "$WEBHOOK_ID"
+          printf "%s" "$PAYPAL_CLIENT_ID" | npx wrangler secret put PAYPAL_CLIENT_ID
+          printf "%s" "$PAYPAL_CLIENT_SECRET" | npx wrangler secret put PAYPAL_CLIENT_SECRET
+          printf "%s" "$PLAN_ID" | npx wrangler secret put PAYPAL_PLAN_ID
+          printf "%s" "$WEBHOOK_ID" | npx wrangler secret put PAYPAL_WEBHOOK_ID
+          printf "%s" "$PAYPAL_SETUP_MODE" | npx wrangler secret put PAYPAL_ENVIRONMENT
+          echo 'PayPal ClientStream Worker secrets configured securely.'
+      - name: Verify public API reports PayPal readiness
+        run: |
+          node --input-type=module -e 'const u="https://app.clientstream.io/api/health";for(let i=0;i<10;i++){const r=await fetch(u);if(r.ok){const h=await r.json();if(h.paypalBilling==="configured"&&h.paypalWebhook==="configured"){console.log("PayPal configuration visible on app domain");process.exit(0)}}await new Promise(f=>setTimeout(f,2000))}throw Error("PayPal deployment readiness not confirmed")'

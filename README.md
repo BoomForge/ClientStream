@@ -18,7 +18,7 @@ The rebuilt application includes:
 - EOFY/performance reporting and Pro CSV export
 - Smart Write using Cloudflare Workers AI with a non-AI fallback
 - Free/Pro entitlements
-- Square subscription billing code, safely dormant until Square credentials are configured
+- PayPal recurring subscription billing code, safely dormant until PayPal credentials, verified webhook and A$9.99 monthly plan are configured
 - account data export and owner-confirmed permanent deletion
 - Privacy Policy and Terms of Service
 
@@ -29,7 +29,7 @@ The rebuilt application includes:
 - **Database:** Cloudflare D1 (`clientstream-db`)
 - **AI:** Cloudflare Workers AI
 - **Transactional email:** Resend when configured
-- **Payments:** Square subscriptions when configured
+- **Payments:** PayPal subscriptions when configured
 - **Deployments:** GitHub Actions -> Cloudflare
 - **Production app target:** `app.clientstream.io`
 - **Marketing site:** existing `clientstream.io` / `purple-cell-493f`
@@ -83,10 +83,10 @@ External configuration still required before the public commercial launch:
 1. Resend sending-domain verification/API key for transactional email.
 2. `app.clientstream.io` activation after the rebuilt app passes final production testing.
 3. Updating the root marketing site using the manual marketing workflow after the app domain is live.
-4. Square production credentials/plan when billing setup is available.
+4. PayPal Live REST API credentials, ClientStream A$9.99/month AUD plan and registered webhook ID.
 5. A backup-encryption password to activate encrypted weekly D1 exports.
 
-Do not commit Cloudflare, Resend, Square or backup secrets.
+Do not commit Cloudflare, Resend, PayPal or backup secrets.
 
 ## D1
 
@@ -114,7 +114,7 @@ The workflow **Deploy ClientStream Marketing** is manual-only and targets the ex
 
 ## Data and privacy
 
-Account owners can export business data from Settings. Permanent deletion requires owner access, the current password and explicit `DELETE` confirmation; deletion is blocked while an active Square subscription exists.
+Account owners can export business data from Settings. Permanent deletion requires owner access, the current password and explicit `DELETE` confirmation; deletion is blocked while an active PayPal subscription exists.
 
 Public policy pages are available at:
 

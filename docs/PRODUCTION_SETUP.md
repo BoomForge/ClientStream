@@ -35,18 +35,27 @@ When ready:
 
 Cloudflare Custom Domains create the required DNS record and certificate automatically.
 
-## 3. Square
+## 3. PayPal recurring subscriptions (A$9.99/month)
 
-Square is deliberately optional until credentials are available. Add these repository secrets later:
+ClientStream uses **Subscriptions v1**, not the Pixelwolf Store's one-time Orders v2 API. The existing Pixelwolf Store Live PayPal Business REST app credentials may be reused, but Pixelwolf's Hostinger-protected private settings are not shared with the Cloudflare Worker.
 
-- `SQUARE_ACCESS_TOKEN`
-- `SQUARE_LOCATION_ID`
-- `SQUARE_PRO_PLAN_VARIATION_ID`
-- `SQUARE_WEBHOOK_SIGNATURE_KEY`
-- `SQUARE_WEBHOOK_URL=https://app.clientstream.io/api/webhooks/square`
-- `SQUARE_ENVIRONMENT=sandbox` for first acceptance, then explicitly change to `production` only after sandbox success.
+**Quickest route (automated provisioning):** Copy the Pixelwolf Store's Live PayPal REST app **Client ID** and **Secret** from PayPal Developer Dashboard into this ClientStream GitHub repository's Actions secrets `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` (never chat, screenshots or source). In GitHub Actions, run **Provision ClientStream PayPal**, choose `sandbox` with Sandbox credentials first or `live` with Live credentials after acceptance. The workflow reuses or creates the exact AUD 9.99/month ClientStream plan, registers the webhook, and pushes all PayPal Worker secrets securely into Cloudflare. It fails rather than enabling an incorrect plan or webhook. Only the PayPal credentials need copying; it does NOT read Hostinger's private Store configuration. Do not switch a live service back to sandbox while genuine subscribers are active.
 
-Then run **Configure ClientStream Runtime**. The app will keep Square billing unavailable until `SQUARE_ENVIRONMENT` is explicitly set. Confirm signature verification, duplicated and out-of-order event handling, and upgrade/downgrade entitlements in Sandbox before any real credentials are added.
+**Manual alternative**, if the provisioning workflow cannot run:
+
+1. In PayPal Developer Dashboard, create a **ClientStream Pro** catalog product and an **ACTIVE** subscription billing plan. The regular billing cycle must be MONTH / interval 1 / total_cycles 0, with a fixed price of **AUD 9.99**. No trial and no setup fee. The Worker refuses checkout if the real provider plan differs.
+2. In that same REST app, register a webhook at `https://app.clientstream.io/api/webhooks/paypal` for `BILLING.SUBSCRIPTION.CREATED`, `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `PAYMENT.SALE.COMPLETED`, `PAYMENT.SALE.REFUNDED` and `PAYMENT.SALE.REVERSED`. Obtain the distinct PayPal **Webhook ID**, not the Client ID.
+3. In GitHub repository Settings > Secrets and variables > Actions, securely set:
+   - `PAYPAL_CLIENT_ID`
+   - `PAYPAL_CLIENT_SECRET`
+   - `PAYPAL_PLAN_ID` (starts with P-)
+   - `PAYPAL_WEBHOOK_ID`
+   - `PAYPAL_ENVIRONMENT=sandbox` for sandbox credentials/plan, or `live` for matching Live credentials/plan.
+4. Run the existing **Configure ClientStream Runtime** workflow, then confirm /api/health shows `paypalBilling` and `paypalWebhook` both `configured`.
+5. Verify an **email-verified** ClientStream owner can approve a Sandbox PayPal subscription and that a real signed Sandbox event activates Pro. Test webhook retries/duplicates, cancellation, and loss of paid status. Only after passing Sandbox acceptance configure Live credentials/plan. Sandbox and Live plan/webhook IDs are distinct. Do not charge a live payment just to test the code without explicit merchant approval.
+6. The existing Pixelwolf Store remains separate. Do not commit PayPal client secrets or any bearer tokens. Enabling PayPal on Pixelwolf does not itself enable it on Cloudflare.
+
+When PayPal cannot be configured, Free remains functional, and Pro checkout is disabled. No Square billing code remains active; the original historical Square D1 audit table is retained for non-destructive migration compatibility.
 
 ## 4. Encrypted database backup
 
