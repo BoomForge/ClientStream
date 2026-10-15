@@ -1688,7 +1688,9 @@ function updateIncomeInvoiceSelection() {
     form.elements.amount.removeAttribute("max");
     $("#income-invoice-balance").textContent = incomeInvoiceResults.length
       ? "Leave Other income selected for a payment not linked to an invoice."
-      : "No invoice selected. Income will not change any invoice balance.";
+      : ($("#income-invoice-search").value.trim()
+          ? "No matching outstanding invoices. Try another number or client name."
+          : "No outstanding issued invoices. You can still add other income.");
     return;
   }
   const outstanding = Number(invoice.outstanding_cents);
@@ -1726,7 +1728,7 @@ function openIncomeDialog(item = null) {
   form.elements.amount.readOnly = false;
   form.elements.amount.removeAttribute("max");
   form.elements.amount.value = item ? (item.amount_cents / 100).toFixed(2) : "";
-  form.elements.receivedAt.value = item?.paid_at?.slice(0,10) || new Date().toISOString().slice(0,10);
+  form.elements.receivedAt.value = item?.paid_at?.slice(0,10) || localDateTimeInput(new Date()).slice(0,10);
   form.elements.notes.value = item?.notes || "";
   $("#income-dialog-title").textContent = item ? "Edit income" : "Add income";
   $("#save-income-button").textContent = item ? "Save changes" : "Add income";
