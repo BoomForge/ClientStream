@@ -48,6 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           origin="https://purple-cell-493f.theevansorrell.workers.dev"
-          curl --fail --silent --show-error --location --max-time 20 "$origin/siteguard.html" | grep -q 'If your website goes offline'
-          curl --fail --silent --show-error --location --max-time 20 "$origin/" | grep -q 'href="/siteguard.html"'
+          curl --fail --silent --show-error --location --max-time 20 --output /tmp/clientstream-siteguard.html "$origin/siteguard.html"
+          curl --fail --silent --show-error --location --max-time 20 --output /tmp/clientstream-marketing.html "$origin/"
+          grep -q 'If your website goes offline' /tmp/clientstream-siteguard.html
+          grep -q 'href="/siteguard.html"' /tmp/clientstream-marketing.html
           echo "SITEGUARD PUBLIC MARKETING WORKER VERIFIED"
