@@ -91,7 +91,7 @@ export async function verifyPayPalEvent(env: Env, request: Request, event: unkno
   const auth_algo = read("paypal-auth-algo");
   if (!transmission_id || !transmission_time || !transmission_sig || !cert_url || !auth_algo) return false;
   const date = Date.parse(transmission_time);
-  if (!Number.isFinite(date) || Math.abs(Date.now() - date) > 10 * 60_000) return false;
+  if (!Number.isFinite(date) || Math.abs(Date.now() - date) > 4 * 24 * 60 * 60_000) return false;
   if (auth_algo !== "SHA256withRSA") return false;
   // Only PayPal certificate URLs for the selected environment are accepted.
   try {
