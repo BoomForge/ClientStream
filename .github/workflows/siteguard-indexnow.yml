@@ -1,0 +1,85 @@
+name: SiteGuard organic search discovery
+
+on:
+  workflow_run:
+    workflows: ["Deploy ClientStream"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clientstream-siteguard-indexnow
+  cancel-in-progress: true
+
+jobs:
+  index:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+      - name: Confirm this deployment changed SiteGuard discovery assets
+        id: needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] ||
+             git diff-tree --no-commit-id --name-only -r HEAD |
+             grep -Eq '^public/(siteguard\.html|siteguard-feed\.xml|sitemap\.xml|robots\.txt|a94f813e21c847d6a986ebc34615f0d2\.txt)$'; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+            echo "No SiteGuard page/discovery change in successfully deployed revision."
+          fi
+      - name: Verify public app-domain ownership, page and sitemap
+        if: steps.needed.outputs.yes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          host=https://app.clientstream.io
+          key=a94f813e21c847d6a986ebc34615f0d2
+          for attempt in 1 2 3 4; do
+            curl --fail --silent --show-error --location --max-time 15 --output /tmp/sg-key "$host/$key.txt" &&
+            test "$(tr -d '\n\r' </tmp/sg-key)" = "$key" &&
+            curl --fail --silent --show-error --location --max-time 15 --output /tmp/sg-page "$host/siteguard.html" &&
+            grep -q 'SiteGuard' /tmp/sg-page &&
+            curl --fail --silent --show-error --location --max-time 15 --output /tmp/sg-sitemap "$host/sitemap.xml" &&
+            grep -q 'app.clientstream.io/siteguard.html' /tmp/sg-sitemap &&
+            break
+            if [[ $attempt == 4 ]]; then
+              echo "App-domain SiteGuard page/key/sitemap cannot be verified"; exit 1
+            fi
+            sleep 5
+          done
+          echo "SITEGUARD SEARCH DISCOVERY URLS PUBLICLY VERIFIED"
+      - name: Submit changed website guide to IndexNow
+        if: steps.needed.outputs.yes == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request
+          urls=["https://app.clientstream.io/siteguard.html"]
+          key="a94f813e21c847d6a986ebc34615f0d2"
+          body=json.dumps({
+            "host":"app.clientstream.io",
+            "key":key,
+            "keyLocation":"https://app.clientstream.io/"+key+".txt",
+            "urlList":urls
+          }).encode("utf-8")
+          request=urllib.request.Request("https://api.indexnow.org/indexnow",
+             data=body,method="POST",
+             headers={"Content-Type":"application/json; charset=utf-8",
+                      "User-Agent":"SiteGuard-ClientStream-Discovery/1.0"})
+          with urllib.request.urlopen(request,timeout=20) as response:
+            if response.status not in (200,202):
+              raise RuntimeError("IndexNow submission not accepted")
+            print("SITEGUARD INDEXNOW ACCEPTED: HTTP",response.status,"URLs:",len(urls))
+          PY
