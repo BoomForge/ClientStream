@@ -396,3 +396,28 @@ dialog::backdrop { background: rgba(15,23,42,.5); backdrop-filter: blur(3px); }
   .metric-bars { gap: 5px; }
   .metric-trend-heading { flex-wrap: wrap; }
 }
+
+
+/* Free-plan sidebar upgrade: same flow as the dashboard's Pro CTA. */
+.sidebar-upgrade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 20px);
+  margin: 0 10px 8px;
+  border: 1px solid rgba(125,211,252,.65);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #0c275f;
+  background: #e0f2fe;
+  font-size: .86rem;
+  font-weight: 800;
+  text-align: left;
+}
+.sidebar-upgrade:hover { background: #fff; }
+.sidebar-upgrade:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+.sidebar-upgrade[disabled] { cursor: wait; }
+@media (min-width: 641px) and (max-width: 900px) {
+  .sidebar-upgrade { width: 100%; margin: 0; padding: 9px 5px; font-size: .7rem; justify-content: center; }
+  .sidebar-upgrade span { display: none; }
+}
