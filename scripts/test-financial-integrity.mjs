@@ -30,8 +30,11 @@ try {
   await api("/api/quotes/" + quote.id, "PATCH", { status: "draft" }, 409);
   await api("/api/quotes/" + quote.id, "PATCH", { items }, 409);
   const invoice = (await api("/api/invoices", "POST", { clientId: client.id, taxMode: "gst10", items }, 201)).invoice;
-  check(!(await api("/api/income/available-invoices")).invoices.some((x) => x.id === invoice.id),
-    "Draft invoice should not be offered for allocating income");
+  const draftResults = (await api("/api/income/available-invoices")).invoices;
+  check(draftResults.some((x) => x.id === invoice.id && x.status === "draft"),
+    "Newly created draft invoices must be discoverable with visible draft status");
+  await api("/api/invoices/" + invoice.id + "/payments", "POST",
+    { amountCents: 500, partialPayment: true }, 409);
   check(invoice.total_cents === 16500, "Invoice totals failed");
   await api("/api/invoices/" + invoice.id, "PATCH", { status: "sent" });
   let available = (await api("/api/income/available-invoices")).invoices;
