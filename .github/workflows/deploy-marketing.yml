@@ -34,7 +34,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           ! grep -R "clientstream.replit.app" marketing
-          grep -q 'siteguard.clientstream.io' marketing/siteguard.html
+          grep -q 'app.clientstream.io/api/siteguard/referral?source=clientstream_marketing_guide' marketing/siteguard.html
           grep -q 'href="/siteguard.html"' marketing/index.html
           test -f marketing/siteguard.html
       - name: Verify live ClientStream application before marketing cutover
