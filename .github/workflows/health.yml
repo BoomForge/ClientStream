@@ -1,8 +1,7 @@
 name: ClientStream production health
 
 on:
-  schedule:
-    - cron: "11 */6 * * *"
+  # No unattended production probes while ClientStream is paused.
   workflow_dispatch:
 
 permissions:
