@@ -12,7 +12,7 @@ const html = read("public/report-error.html");
 for (const field of ["issueType","summary","details","steps","email","pageUrl","website"])
   assert.ok(html.includes('name="' + field + '"'), field);
 assert.ok(read("public/report-error.js").includes('fetch("/api/error-reports"'));
-assert.ok(read("marketing/index.html").includes('https://app.clientstream.io/report-error.html'));
+assert.ok(read("marketing/index.html").includes("TEMPORARY SERVICE PAUSE"));
 assert.ok(read("public/index.html").includes('href="/report-error.html"'));
 assert.ok(read("wrangler.jsonc").includes('"REPORT_RATE_LIMITER"'));
 console.log("ClientStream error reporting retains validation and uses its own configured Resend transport.");
