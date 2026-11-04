@@ -64,7 +64,7 @@ async function api(request: Request, env: Env): Promise<Response> {
       paypalWebhook: paypalConfig(env)?.webhookId ? "configured" : "unconfigured",
       paypalBilling: paypalConfig(env) ? "configured" : "unconfigured",
       transactionalEmail: emailConfigured(env) ? "configured" : "unconfigured",
-      errorReportTransport: "siteguard",
+      errorReportTransport: (emailConfigured(env) && !!env.SUPPORT_EMAIL) ? "resend" : "unconfigured",
       workersAI: env.AI ? "configured" : "unconfigured",
       timestamp: new Date().toISOString()
     });
