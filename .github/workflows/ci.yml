@@ -165,5 +165,29 @@ jobs:
         shell: bash
         run: bash scripts/drill-local-backup.sh
 
+      - name: Validate paused ClientStream locally without touching real accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8796 --var CLIENTSTREAM_PAUSED:true > /tmp/clientstream-paused.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8796/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            tail -n 90 /tmp/clientstream-paused.log
+            exit 1
+          fi
+          if ! CLIENTSTREAM_SMOKE_URL=http://127.0.0.1:8796 node scripts/smoke-maintenance.mjs; then
+            tail -n 90 /tmp/clientstream-paused.log
+            exit 1
+          fi
+
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run
