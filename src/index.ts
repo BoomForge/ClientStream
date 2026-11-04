@@ -24,6 +24,7 @@ import { enforceAuthRateLimit, enforceMutationRateLimit, secureAssetResponse } f
 import { runMaintenance } from "./maintenance";
 import { DEPLOY_REVISION } from "./revision";
 import { siteguardReferral } from "./siteguard-referrals";
+import { clientStreamIsPaused, clientStreamPausedApiAllowed, clientStreamPausedApiResponse, clientStreamPausedHealth, clientStreamPausedPage } from "./paused";
 
 const VERSION = "0.9.0-launch-hardening";
 
@@ -194,6 +195,11 @@ async function api(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (clientStreamIsPaused(env)) {
+      if (url.pathname === "/api/health" && request.method === "GET") return clientStreamPausedHealth();
+      if (!url.pathname.startsWith("/api/")) return clientStreamPausedPage(request, env);
+      if (!clientStreamPausedApiAllowed(request, url.pathname)) return clientStreamPausedApiResponse();
+    }
     if (!url.pathname.startsWith("/api/")) {
       return secureAssetResponse(await env.ASSETS.fetch(request));
     }
@@ -218,6 +224,7 @@ export default {
   },
 
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (clientStreamIsPaused(env)) return;
     ctx.waitUntil(runMaintenance(env));
   }
 } satisfies ExportedHandler<Env>;

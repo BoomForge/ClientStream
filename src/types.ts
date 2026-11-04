@@ -4,6 +4,7 @@ export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   APP_ENV?: string;
+  CLIENTSTREAM_PAUSED?: string;
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_PLAN_ID?: string;

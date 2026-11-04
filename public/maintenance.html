@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0e1c33">
+<title>ClientStream — Temporarily paused</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0e1c33;color:#f2f7fc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;flex-direction:column}
+main{flex:1;max-width:790px;width:100%;margin:0 auto;padding:clamp(56px,11vw,105px) 22px}
+header,footer{padding:21px max(22px,calc((100% - 790px)/2));background:#0a1629;border-bottom:1px solid #263955}
+footer{border-top:1px solid #263955;border-bottom:0;color:#b8c5d3;font-size:.875rem}
+h1{font-size:clamp(2.3rem,6vw,4rem);line-height:1.1;letter-spacing:-.04em;margin:18px 0 25px}
+h2{font-size:1.3rem}p{color:#cbd8e7;line-height:1.7}strong{color:#fff}
+.eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.13em;color:#7de2cf}
+.panel{background:#152941;border:1px solid #34506c;border-radius:16px;padding:25px;margin:29px 0}
+a{color:#89dbfb}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #93d6ff;outline-offset:3px}
+button{font:inherit;font-weight:700;background:#8ae4d5;color:#092129;border:0;border-radius:9px;padding:12px 16px;cursor:pointer}
+button.secondary{background:#263e56;color:#fff;border:1px solid #6e8da3}
+button:disabled{opacity:.6;cursor:wait}
+.controls{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+label{display:block;margin:12px 0 5px;font-weight:650}
+input{display:block;width:100%;padding:13px;color:#fff;background:#0d1e30;border:1px solid #648299;border-radius:8px;font:inherit}
+details{border-top:1px solid #4b6580;margin-top:24px;padding-top:19px}
+summary{font-weight:700;cursor:pointer}
+.status{white-space:pre-wrap;background:#0b2035;padding:12px 15px;border-radius:8px;margin-top:16px;color:#d7f4ec}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><strong>ClientStream</strong></header>
+<main>
+<div class="eyebrow">SERVICE NOTICE · TEMPORARY PAUSE</div>
+<h1>ClientStream is taking a break.</h1>
+<p>New registrations, upgrades and normal application access are temporarily unavailable while the project is paused. Your existing ClientStream information has not been intentionally deleted. This is not a permanent account closure.</p>
+<section class="panel" aria-labelledby="billing-heading">
+<h2 id="billing-heading">Already subscribed?</h2>
+<p>If you have an active paid subscription, check its renewal in your <a href="https://www.paypal.com/" target="_blank" rel="noopener noreferrer">PayPal account</a> under <strong>Settings → Payments → Automatic Payments</strong>. Don't assume that a paused website stops PayPal from renewing your subscription.</p>
+<p>You can also use the restricted customer access below to check your ClientStream billing status, request cancellation and export your account information without reopening the full application.</p>
+<details>
+<summary>Existing customer: billing and data access</summary>
+<form id="member-login">
+<label for="member-email">ClientStream email</label>
+<input id="member-email" name="email" type="email" autocomplete="username" required>
+<label for="member-password">Password</label>
+<input id="member-password" name="password" type="password" autocomplete="current-password" required>
+<div class="controls"><button type="submit">Sign in securely</button></div>
+</form>
+<div id="member-controls" hidden>
+<p id="member-plan">Checking your account…</p>
+<div class="controls">
+<button id="member-cancel" type="button" class="secondary">Cancel ClientStream renewal</button>
+<button id="member-export" type="button" class="secondary">Download my account data</button>
+<button id="member-logout" type="button" class="secondary">Sign out</button>
+</div>
+</div>
+<div id="member-feedback" role="status" aria-live="polite" class="status" hidden></div>
+</details>
+</section>
+<p>The free <a href="https://clientstream.io/siteguard.html">SiteGuard retirement notice</a> also applies to the separate monitoring product. If you paid through Whop, manage that subscription from your Whop account.</p>
+</main>
+<footer>© 2026 ClientStream · Temporary maintenance mode. Production data, payment records and backups have not been erased by this notice.</footer>
+<script src="/maintenance.js" defer></script>
+</body></html>

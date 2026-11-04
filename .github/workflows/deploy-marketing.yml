@@ -37,11 +37,12 @@ jobs:
           grep -q 'no longer available for new subscriptions' marketing/siteguard.html
           ! grep -q 'whop.com/checkout/' marketing/siteguard.html
           ! grep -q 'api/siteguard/referral' marketing/index.html
+          grep -q 'ClientStream is taking a break' marketing/index.html
           test -f marketing/siteguard.html
       - name: Verify live ClientStream application before marketing cutover
         shell: bash
         run: |
-          curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/
+          curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/api/health
       - name: Deploy marketing site
         run: npx wrangler deploy --config wrangler.marketing.jsonc
       - name: Verify publicly reachable marketing Worker
@@ -54,4 +55,5 @@ jobs:
           grep -q 'no longer available for new subscriptions' /tmp/clientstream-siteguard.html
           ! grep -q 'whop.com/checkout/' /tmp/clientstream-siteguard.html
           ! grep -q 'api/siteguard/referral' /tmp/clientstream-marketing.html
+          grep -q 'ClientStream is taking a break' /tmp/clientstream-marketing.html
           echo "SITEGUARD RETIRED MARKETING WORKER VERIFIED"

@@ -9,6 +9,30 @@ permissions:
   contents: read
 
 jobs:
+  # Read-only customer count before shipping a pause. Do not expose names,
+  # addresses, emails, payment IDs or raw subscription rows.
+  production_inventory:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'pause/clientstream-') }}
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Wrangler
+        run: npm install
+      - name: Count production users and subscriptions (no personal data)
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS registered_users, SUM(CASE WHEN email LIKE 'smoke-%@example.invalid' THEN 1 ELSE 0 END) AS automated_smoke_users, SUM(CASE WHEN email NOT LIKE 'smoke-%@example.invalid' THEN 1 ELSE 0 END) AS other_registered_users FROM users"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS total_subscription_records, SUM(CASE WHEN provider = 'paypal' AND status IN ('active','pending') THEN 1 ELSE 0 END) AS potentially_active_paypal_subscriptions FROM subscriptions"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS pro_businesses FROM businesses WHERE plan = 'pro'"
+
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-local.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-local.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           ready=false
@@ -58,7 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-tenants.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-tenants.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 50); do
@@ -74,7 +98,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-finance.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-finance.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 50); do
@@ -90,7 +114,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-auth.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-auth.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 50); do
@@ -106,7 +130,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-limits.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-limits.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 50); do
@@ -122,7 +146,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler dev --local --ip 127.0.0.1 --port 8794 > /tmp/clientstream-brand.log 2>&1 &
+          npx wrangler dev --local --ip 127.0.0.1 --port 8794 --var CLIENTSTREAM_PAUSED:false > /tmp/clientstream-brand.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 50); do
@@ -140,6 +164,30 @@ jobs:
       - name: Prove encrypted local backup restore
         shell: bash
         run: bash scripts/drill-local-backup.sh
+
+      - name: Validate paused ClientStream locally without touching real accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8796 --var CLIENTSTREAM_PAUSED:true > /tmp/clientstream-paused.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8796/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            tail -n 90 /tmp/clientstream-paused.log
+            exit 1
+          fi
+          if ! CLIENTSTREAM_SMOKE_URL=http://127.0.0.1:8796 node scripts/smoke-maintenance.mjs; then
+            tail -n 90 /tmp/clientstream-paused.log
+            exit 1
+          fi
 
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run
