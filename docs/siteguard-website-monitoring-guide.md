@@ -25,15 +25,19 @@ A failure alert helps you investigate early. A recovery alert tells you when the
 4. Review response time and HTTPS certificate status occasionally.
 5. Treat monitoring as a useful early warning, not an uptime guarantee or a substitute for backups.
 
-## An option from ClientStream: SiteGuard
+## SiteGuard retirement notice
 
-[**SiteGuard**](https://siteguard.clientstream.io/) is a lightweight website-monitoring service built for small businesses. It offers a customer dashboard, incident/recovery email alerts, response-time and SSL-certificate visibility, and monitoring for up to **three owner-authorised websites**.
+SiteGuard by ClientStream is **no longer available for new subscriptions**.
+Its original A$9.99 / 30-day subscription is being withdrawn from sale.
+The former monitoring service may cease to issue alerts during retirement,
+so do not rely on it as your only availability monitor.
 
-The advertised subscription is **A$9.99 every 30 days**, with billing managed through Whop. Monitoring depends on a single probe location, its electricity and internet connectivity; no uptime SLA is promised.
+Existing members should check renewal and cancellation details through
+their own Whop account. If paid monitoring can no longer be provided for
+an unused period, contact the seller through the original order for help.
 
-**[Visit SiteGuard — plans and signup](https://siteguard.clientstream.io/)**
-
-*SiteGuard is a separate monitoring product by ClientStream. This is product information on an owned channel, not a claim of measured availability or independent review. Last reviewed: 15 October 2026.*
+The general website monitoring advice below remains available as a free
+reference. It is not an offer to provide monitoring services.
 
 ## FAQ
 
