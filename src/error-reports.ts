@@ -1,7 +1,7 @@
 import type { Env } from "./types";
 import { json, mutationOriginIsAllowed, sha256Hex, validEmail } from "./http";
+import { emailConfigured, escapeHtml, sendEmail } from "./email";
 
-const SITEGUARD_MAIL_BRIDGE = "https://siteguard.clientstream.io/clientstream/error-report";
 const CATEGORIES = new Set(["Something not working", "Error message", "Login or account", "Billing", "Other"]);
 const textField = (data: Record<string, unknown>, key: string): string =>
   typeof data[key] === "string" ? (data[key] as string).trim() : "";
@@ -49,27 +49,37 @@ export async function submitErrorReport(request: Request, env: Env): Promise<Res
     return fail("Please check the fields and try again.", 400);
   }
 
-  // Resend credentials never leave SkyPi. The Cloudflare Worker calls only
-  // SiteGuard's fixed-recipient, rate-limited mail bridge over HTTPS.
-  let response: Response;
-  try {
-    response = await fetch(SITEGUARD_MAIL_BRIDGE, {
-      method: "POST",
-      headers: { "content-type": "application/json", "accept": "application/json" },
-      body: JSON.stringify({
-        issueType, summary, details, steps, email, pageUrl,
-        browser: (request.headers.get("user-agent") || "Unknown").slice(0, 300)
-      }),
-      signal: AbortSignal.timeout(18000)
-    });
-  } catch (error) {
-    console.error("SiteGuard error-report bridge unreachable", { error: error instanceof Error ? error.name : "network_failure" });
+  // Send directly from the ClientStream Cloudflare Worker via its existing
+  // transactional email integration. This avoids the SiteGuard/Pi bridge.
+  // Never claim delivery if the seller's support mailbox is not configured.
+  const recipient = (env.SUPPORT_EMAIL || "").trim();
+  if (!emailConfigured(env) || !validEmail(recipient)) {
+    console.error("ClientStream report delivery is not configured");
     return fail("Error reporting is temporarily unavailable. Please try again later.", 503);
   }
-  if (response.status === 429) return fail("Too many reports. Please try again later.", 429);
-  if (response.status !== 201) {
-    // A bridge that failed to send must never appear successful to the user.
-    console.error("SiteGuard mail bridge rejected report", { status: response.status });
+  const browser = (request.headers.get("user-agent") || "Unknown").slice(0, 300);
+  const text = [
+    "ClientStream error report",
+    "Category: " + issueType,
+    "Summary: " + summary,
+    "Description: " + details,
+    "Steps: " + (steps || "(none)"),
+    "Reply email: " + (email || "(not provided)"),
+    "Page URL: " + (pageUrl || "(not provided)"),
+    "Browser: " + browser
+  ].join("\n\n");
+  try {
+    await sendEmail(env, {
+      to: recipient,
+      subject: "[ClientStream] Error report: " + summary.slice(0, 90),
+      text,
+      html: "<h2>ClientStream error report</h2><pre style=\"white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.5 monospace\">"
+        + escapeHtml(text) + "</pre>"
+    });
+  } catch (error) {
+    console.error("ClientStream direct error-report email failed", {
+      error: error instanceof Error ? error.name : "transport_failure"
+    });
     return fail("Error reporting is temporarily unavailable. Please try again later.", 503);
   }
   return json({ success: true, message: "Thanks. Your report has been sent to the ClientStream team." }, { status: 201 });

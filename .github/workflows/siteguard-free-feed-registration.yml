@@ -1,27 +1,16 @@
-name: SiteGuard one-time free RSS directory registration
+name: SiteGuard retirement — archived discovery task
 
+# SiteGuard is no longer sold. Do not automatically submit old product
+# listings to search indexes or third-party RSS directories.
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/submit-siteguard-rss-once.mjs
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: siteguard-free-rss-one-shot
-  cancel-in-progress: false
-
 jobs:
-  register:
+  archived:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Submit SiteGuard Atom feed to free, agent-friendly open directory once
-        run: node scripts/submit-siteguard-rss-once.mjs
+      - name: Confirm product discovery retired
+        run: echo "SiteGuard sales and marketing discovery have been retired. No submission sent."

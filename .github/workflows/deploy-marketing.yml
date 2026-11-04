@@ -34,8 +34,9 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           ! grep -R "clientstream.replit.app" marketing
-          grep -q 'app.clientstream.io/api/siteguard/referral?source=clientstream_marketing_guide' marketing/siteguard.html
-          grep -q 'href="/siteguard.html"' marketing/index.html
+          grep -q 'no longer available for new subscriptions' marketing/siteguard.html
+          ! grep -q 'whop.com/checkout/' marketing/siteguard.html
+          ! grep -q 'api/siteguard/referral' marketing/index.html
           test -f marketing/siteguard.html
       - name: Verify live ClientStream application before marketing cutover
         shell: bash
@@ -43,10 +44,6 @@ jobs:
           curl --fail --silent --show-error --location --max-time 20 --output /dev/null https://app.clientstream.io/
       - name: Deploy marketing site
         run: npx wrangler deploy --config wrangler.marketing.jsonc
-      - name: Verify actual SiteGuard sales origin without racing app deployment
-        env:
-          SITEGUARD_ONLY_ORIGIN: "true"
-        run: node scripts/probe-siteguard-sales.mjs
       - name: Verify publicly reachable marketing Worker
         shell: bash
         run: |
@@ -54,6 +51,7 @@ jobs:
           origin="https://purple-cell-493f.theevansorrell.workers.dev"
           curl --fail --silent --show-error --location --max-time 20 --output /tmp/clientstream-siteguard.html "$origin/siteguard.html"
           curl --fail --silent --show-error --location --max-time 20 --output /tmp/clientstream-marketing.html "$origin/"
-          grep -q 'If your website goes offline' /tmp/clientstream-siteguard.html
-          grep -q 'href="/siteguard.html"' /tmp/clientstream-marketing.html
-          echo "SITEGUARD PUBLIC MARKETING WORKER VERIFIED"
+          grep -q 'no longer available for new subscriptions' /tmp/clientstream-siteguard.html
+          ! grep -q 'whop.com/checkout/' /tmp/clientstream-siteguard.html
+          ! grep -q 'api/siteguard/referral' /tmp/clientstream-marketing.html
+          echo "SITEGUARD RETIRED MARKETING WORKER VERIFIED"
