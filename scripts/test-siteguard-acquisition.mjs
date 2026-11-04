@@ -1,27 +1,26 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-const files = [
-  ["marketing/index.html", "clientstream_website"],
-  ["marketing/siteguard.html", "clientstream_marketing_guide"],
-  ["public/index.html", "clientstream_app"],
-  ["public/siteguard.html", "clientstream_monitoring_guide"],
-  ["public/siteguard-outage-checklist.html", "siteguard_outage_guide"],
-  ["public/siteguard-ssl-guide.html", "siteguard_ssl_guide"]
-];
-for (const [path, source] of files) {
-  const doc = readFileSync(new URL("../" + path, import.meta.url), "utf8");
-  assert.match(doc, new RegExp("href=\"https://app\\.clientstream\\.io/api/siteguard/referral\\?source=" + source),
-    path + " missing tracked customer-acquisition CTA");
-
-  assert.match(doc, /SiteGuard/i, path + " lost clear product attribution");
+const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
+const pages = ["marketing/index.html", "marketing/siteguard.html", "public/index.html",
+  "public/siteguard.html", "public/siteguard-outage-checklist.html", "public/siteguard-ssl-guide.html"];
+for (const path of pages) {
+  const html = read(path);
+  assert.ok(!html.includes("api/siteguard/referral?source="), path + " still markets SiteGuard.");
+  assert.ok(!html.includes("whop.com/checkout/"), path + " still exposes a checkout.");
+  assert.ok(!html.includes("Visit SiteGuard and subscribe"), path + " still accepts customers.");
 }
-const sitemap = readFileSync(new URL("../public/sitemap.xml", import.meta.url), "utf8");
-const feed = readFileSync(new URL("../public/siteguard-feed.xml", import.meta.url), "utf8");
-for(const slug of ["siteguard.html", "siteguard-outage-checklist.html", "siteguard-ssl-guide.html"]) {
-  assert.ok(sitemap.includes("https://app.clientstream.io/" + slug), "Missing SiteGuard sitemap guide: " + slug);
-  assert.ok(feed.includes("https://app.clientstream.io/" + slug), "Missing Atom distribution entry: " + slug);
+for (const path of ["marketing/siteguard.html", "public/siteguard.html"]) {
+  const html=read(path);
+  assert.match(html,/no longer available for new subscriptions/i);
+  assert.match(html, /noindex/);
+  assert.match(html,/whop.com/);
 }
-assert.equal((sitemap.match(/<url>/g) || []).length, 3, "Avoid duplicate near-identical search entries.");
-assert.ok(!sitemap.includes("siteguard-website-down.html"), "Duplicate outage guides should not be indexed.");
-assert.ok(!sitemap.includes("siteguard-ssl-certificate-expiry.html"), "Duplicate SSL guides should not be indexed.");
-console.log("SiteGuard first-party placements, six distinct tracking sources, canonical guides and feed passed.");
+assert.ok(!read("marketing/index.html").includes('id="siteguard"'));
+assert.ok(!read("public/index.html").includes('siteguard-sidebar-link"'));
+for (const path of ["marketing/sitemap.xml","public/sitemap.xml"]) {
+  assert.ok(!read(path).includes("siteguard.html"), path + " still advertises the product.");
+}
+for (const slug of ["siteguard-outage-checklist.html","siteguard-ssl-guide.html"]) {
+  assert.ok(read("public/sitemap.xml").includes(slug), "Keep existing free guide: " + slug);
+}
+console.log("SiteGuard sales placements removed; free guides and ClientStream remain intact.");
