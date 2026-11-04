@@ -62,31 +62,23 @@ jobs:
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS credentials_over_worker_limit FROM password_credentials WHERE iterations > 100000"
 
+      - name: Read-only inventory of existing users and PayPal subscriptions
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: |
+          # Count only: never print names, email addresses or payment identifiers.
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT (SELECT COUNT(*) FROM users) AS registered_users, (SELECT COUNT(*) FROM subscriptions WHERE provider = 'paypal' AND status IN ('active','pending')) AS possibly_active_paypal_subscriptions"
+
       - name: Deploy Worker and static assets
         if: steps.cloudflare.outputs.ready == 'true'
         run: npx wrangler deploy
 
-      - name: End-to-end production smoke test (with scoped Worker diagnostics)
+      - name: Verify paused production without creating user accounts or charges
         if: steps.cloudflare.outputs.ready == 'true'
-        shell: bash
         env:
           CLIENTSTREAM_SMOKE_URL: https://clientstream.theevansorrell.workers.dev
           CLIENTSTREAM_EXPECT_REVISION: ${{ github.event.workflow_run.head_sha || github.sha }}
-        run: |
-          set -euo pipefail
-          # Capture only registration errors for the disposable smoke request;
-          # do not dump unrelated request logs, tokens, or customer information.
-          npx wrangler tail clientstream --format pretty --method POST --search "ClientStream registration" > /tmp/clientstream-registration-tail.log 2>&1 &
-          tail_pid=$!
-          trap 'kill "$tail_pid" 2>/dev/null || true' EXIT
-          sleep 5
-          if ! npm run smoke:production; then
-            sleep 3
-            echo "Filtered Worker registration diagnostics:"
-            tail -n 45 /tmp/clientstream-hash-tail.log
-            exit 1
-          fi
+        run: node scripts/smoke-maintenance.mjs
 
-      - name: Verify public SiteGuard clean redirect after Worker deployment
+      - name: Verify SiteGuard referral remains closed during pause
         if: steps.cloudflare.outputs.ready == 'true'
         run: node scripts/probe-siteguard-sales.mjs
