@@ -1,3 +1,5 @@
+import type { Env } from "./types";
+
 /**
  * SiteGuard has been retired from sale. The historical redirect endpoint is
  * deliberately closed; old links must not expose a checkout or send buyers
@@ -6,7 +8,7 @@
  * This path is side-effect-free: it never writes referral telemetry,
  * modifies subscriptions, processes payments or touches ClientStream D1.
  */
-export async function siteguardReferral(request: Request): Promise<Response> {
+export async function siteguardReferral(request: Request, _env?: Env): Promise<Response> {
   const method = request.method.toUpperCase();
   return new Response(method === "HEAD" ? null : JSON.stringify({
     status: "retired",
