@@ -14,9 +14,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": [
-      "/api/*"
-    ],
+    "run_worker_first": true,
     "not_found_handling": "single-page-application"
   },
   "ai": {
@@ -31,7 +29,8 @@
     }
   ],
   "vars": {
-    "APP_ENV": "production"
+    "APP_ENV": "production",
+    "CLIENTSTREAM_PAUSED": "true"
   },
   "ratelimits": [
     {
@@ -68,8 +67,6 @@
     }
   ],
   "triggers": {
-    "crons": [
-      "17 * * * *"
-    ]
+    "crons": []
   }
 }
