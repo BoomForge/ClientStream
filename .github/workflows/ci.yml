@@ -9,6 +9,30 @@ permissions:
   contents: read
 
 jobs:
+  # Read-only customer count before shipping a pause. Do not expose names,
+  # addresses, emails, payment IDs or raw subscription rows.
+  production_inventory:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'pause/clientstream-') }}
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Wrangler
+        run: npm install
+      - name: Count production users and subscriptions (no personal data)
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS registered_users, SUM(CASE WHEN email LIKE 'smoke-%@example.invalid' THEN 1 ELSE 0 END) AS automated_smoke_users, SUM(CASE WHEN email NOT LIKE 'smoke-%@example.invalid' THEN 1 ELSE 0 END) AS other_registered_users FROM users"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS total_subscription_records, SUM(CASE WHEN provider = 'paypal' AND status IN ('active','pending') THEN 1 ELSE 0 END) AS potentially_active_paypal_subscriptions FROM subscriptions"
+          npx wrangler d1 execute clientstream-db --remote --command "SELECT COUNT(*) AS pro_businesses FROM businesses WHERE plan = 'pro'"
+
   validate:
     runs-on: ubuntu-latest
     steps:
