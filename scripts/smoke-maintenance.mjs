@@ -5,12 +5,29 @@ const expectedRevision = process.env.CLIENTSTREAM_EXPECT_REVISION || null;
 async function test(path, options={}) {
   return fetch(base + path, { redirect:"manual", signal:AbortSignal.timeout(20000), ...options });
 }
-const health = await test("/api/health");
-if(health.status !== 200)throw Error("Paused health endpoint unavailable: " + health.status);
-const info=await health.json();
-if(info.status!=="paused"||info.paused!==true||info.newRegistrations!==false||info.newCheckouts!==false)
- throw Error("ClientStream was not placed into paused mode.");
-if(expectedRevision && info.revision!==expectedRevision)throw Error("Unexpected deployed revision: "+info.revision);
+// Cloudflare can briefly return the previously deployed version while the
+// new Worker propagates. Retry read-only health until the intended revision
+// and paused state are both confirmed, instead of treating a transient old
+// response as a failed retirement.
+let info = null;
+for(let attempt=1;attempt<=45;attempt++) {
+  try {
+    const health=await test("/api/health?pause_probe="+attempt,{cache:"no-store"});
+    const body=await health.json();
+    info=body;
+    if(health.status===200 && body.status==="paused" && body.paused===true &&
+        body.newRegistrations===false && body.newCheckouts===false &&
+        (!expectedRevision || body.revision===expectedRevision))break;
+  } catch(error) {
+    if(attempt===45)throw error;
+  }
+  if(attempt<45)await new Promise(resolve=>setTimeout(resolve,1000));
+}
+if(info?.status!=="paused"||info?.paused!==true||info?.newRegistrations!==false||info?.newCheckouts!==false)
+  throw Error("Expected ClientStream paused mode; observed status "+JSON.stringify(info?.status)+
+    " and revision "+JSON.stringify(info?.revision));
+if(expectedRevision && info.revision!==expectedRevision)
+  throw Error("Expected deployment revision "+expectedRevision+"; observed "+info.revision);
 
 for(const path of ["/","/index.html","/signup","/report-error.html"]) {
   const res=await test(path,{headers:{"accept":"text/html"}});
