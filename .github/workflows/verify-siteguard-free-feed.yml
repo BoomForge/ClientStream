@@ -1,22 +1,16 @@
-name: Verify previously submitted SiteGuard feed listing
+name: SiteGuard retirement — archived discovery task
 
+# SiteGuard is no longer sold. Do not automatically submit old product
+# listings to search indexes or third-party RSS directories.
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/verify-siteguard-directory-publication.mjs
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  verify:
+  archived:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Independently check public RSS listing without another submission
-        run: node scripts/verify-siteguard-directory-publication.mjs
+      - name: Confirm product discovery retired
+        run: echo "SiteGuard sales and marketing discovery have been retired. No submission sent."
