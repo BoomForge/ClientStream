@@ -1,16 +1,7 @@
 name: Deploy ClientStream Marketing
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - marketing/index.html
-      - marketing/siteguard.html
-      - marketing/robots.txt
-      - marketing/sitemap.xml
-      - marketing/a94f813e21c847d6a986ebc34615f0d2.txt
-      - wrangler.marketing.jsonc
-      - .github/workflows/deploy-marketing.yml
+  # ClientStream retired 2026-11-07: no automatic marketing deployments.
   workflow_dispatch:
 
 permissions:
