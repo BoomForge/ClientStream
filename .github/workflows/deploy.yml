@@ -1,9 +1,7 @@
 name: Deploy ClientStream
 
 on:
-  workflow_run:
-    workflows: ["ClientStream CI"]
-    types: [completed]
+  # ClientStream retired 2026-11-07: no automatic deployments.
   workflow_dispatch:
 
 permissions:
@@ -15,10 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
